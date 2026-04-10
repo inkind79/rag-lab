@@ -49,12 +49,14 @@ cd ..
 
 ```bash
 # Any Ollama model for chat — vision models recommended for document analysis
-ollama pull gemma3n:e4b-it-fp16    # or any model: llama3.2-vision, phi4, qwen3, etc.
+ollama pull <your-preferred-model>   # e.g., gemma4, qwen3-vl, llama3.2-vision, phi4
 
 # Required by Mem0 for conversation memory
-ollama pull nomic-embed-text       # embeddings
-ollama pull gemma3:4b              # memory extraction (small text model)
+ollama pull nomic-embed-text         # embeddings
+ollama pull gemma3:4b                # memory extraction (small text model)
 ```
+
+RAG Lab auto-detects your installed Ollama models on startup — no configuration needed.
 
 ### 3. Configure
 
