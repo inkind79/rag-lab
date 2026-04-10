@@ -10,8 +10,8 @@ A local-first visual document analysis workbench. Upload PDFs and images, ask qu
 RAG Lab uses **ColPali visual embeddings** to understand document layout and content visually, paired with any **Ollama-compatible LLM** for inference. Run models locally or connect to [Ollama Cloud](https://docs.ollama.com/cloud) for larger models.
 
 <p align="center">
-  <img src="docs/images/screenshot-dark.png" alt="RAG Lab — Dark Mode" width="48%">
   <img src="docs/images/screenshot-light.png" alt="RAG Lab — Light Mode" width="48%">
+  <img src="docs/images/screenshot-dark.png" alt="RAG Lab — Dark Mode" width="48%">
 </p>
 
 ## Features
