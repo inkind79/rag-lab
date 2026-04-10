@@ -679,13 +679,21 @@ class RAGRetriever(BaseRetriever):
                     # Log analysis results
                     logger.info(f"Score-slope analysis: Original count: {analysis['original_count']}, Filtered count: {analysis['filtered_count']}, Cutoff reason: {analysis['cutoff_reason']}")
 
+                    # Cap results by model's image capacity
+                    # Each page image costs ~1500 tokens; reserve 2000 for query+response
+                    from src.utils.token_utils import get_model_context_window
+                    ctx = get_model_context_window(generation_model, session_data)
+                    max_images = max(1, (ctx - 2000) // 1500)
+                    if len(filtered_results) > max_images:
+                        logger.info(f"Image cap: {len(filtered_results)} pages → {max_images} (model context {ctx} tokens, ~1500 tokens/image)")
+                        filtered_results = filtered_results[:max_images]
+
                     # Get OCR cache for token counting
                     ocr_cache = get_ocr_cache_for_session(session_id)
 
                     # Apply token budget filtering to the score-slope filtered results
-                    # This is our primary filtering mechanism - relevance first, then token budget
                     budget_filtered_results, budget_analysis = apply_token_budget_filter(
-                        filtered_results,  # Use the results already filtered by score-slope
+                        filtered_results,
                         generation_model,
                         session_data,
                         ocr_cache
