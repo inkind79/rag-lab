@@ -1,0 +1,50 @@
+# RAG Lab — Python dependencies
+
+# Core framework
+fastapi
+uvicorn[standard]
+python-multipart
+fastapi-users[sqlalchemy]
+aiosqlite
+
+# ML / Vision
+torch
+torchvision
+transformers>=5.3.0,<6.0
+colpali-engine>=0.3.15,<0.4
+qwen-vl-utils
+einops
+Pillow>=9.0.0
+
+# Embeddings & retrieval
+lancedb
+sentence-transformers
+bm25s
+PyPDF2
+
+# Vector stores
+qdrant-client>=1.13.0
+faiss-cpu>=1.7.3
+
+# Memory
+mem0ai
+
+# OCR
+easyocr
+docling_core
+
+# Ollama client
+ollama
+
+# Utilities
+requests>=2.31.0
+psutil>=5.9.0
+python-dotenv
+huggingface_hub>=0.20.2
+markdown
+hf_transfer
+backoff>=2.2.1
+
+# GPU acceleration (Linux only)
+flash-attn; sys_platform != 'darwin'
+faiss-gpu; sys_platform != 'darwin' and platform_machine != 'arm64'

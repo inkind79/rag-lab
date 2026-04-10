@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+
+# Local development
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+
+# Project specific
+*:Zone.Identifier
+*.Zone.Identifier
+*.log
+*.log.backup_*
+cache/
+checkpoints/
+checkpoints_new/
+OLD_CHECKPOINTS_DO_NOT_USE/
+backups/
+offload/
+backup_checkpoint_system/
+sessions/
+temp_extract*/
+uploaded_documents/
+user_defaults/
+config/users.json
+data/mem0_chroma/
+screenshots*/
+test_scripts/sessions/
+test_scripts/uploaded_documents/
+test_scripts/test_db/
+
+# Cleanup patterns
+*.bak*
+*.backup*
+*Copy*.sh
+archive/
+*.pyc
+.pytest_cache/
+
+# Byaldi cache directory
+.byaldi/
+
+# Runtime database and cache files
+.lancedb/
+.memory_chromadb/
+static/images/*/retrieved_*.png
+
+**/.claude/settings.local.json
+
+# Exploration and analysis documentation (generated, not tracked)
+ARCHITECTURE_ANALYSIS.md
+CODEBASE_MAP.md
+DEEPSEEK_INTEGRATION_GUIDE.md
+DOCUMENTATION_INDEX.md
+EXPLORATION_SUMMARY.txt
+QUICK_REFERENCE.md
+node_modules/
+.svelte-kit/
+data/users.db
+src/data/prompt_templates/*_templates.json
+static/images/

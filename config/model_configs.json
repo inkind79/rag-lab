@@ -1,0 +1,576 @@
+{
+  "default": {
+    "temperature": 0.1,
+    "max_tokens": 65536
+  },
+  "ollama": {
+    "temperature": 0.1,
+    "num_predict": 8192,
+    "num_ctx": 8192,
+    "repeat_penalty": 1.1,
+    "models": {
+      "llama-vision": {
+        "temperature": 0.1,
+        "description": "Meta - Llama 3.2 Vision 11B (Q4)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "num_ctx": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40
+      },
+      "llama-vision-q8": {
+        "temperature": 0.1,
+        "description": "Meta - Llama 3.2 Vision 11B (Q8)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "llama3.2-vision:11b-instruct-fp16": {
+        "temperature": 0.1,
+        "description": "Meta - Llama 3.2 Vision 11B (FP16)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "minicpm-vision": {
+        "temperature": 0.1,
+        "description": "MiniCPM Vision",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "granite3.2-vision": {
+        "top_p": 0.9,
+        "top_k": 40,
+        "description": "Granite 3.2 Vision",
+        "supports_vision": true,
+        "temperature": 0.1,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "num_ctx": 8192
+      },
+      "gemma-vision": {
+        "temperature": 0.1,
+        "description": "Google - Gemma 3 Vision 12B (Q4)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "gemma3:12b-it-q8_0": {
+        "temperature": 0.1,
+        "description": "Google - Gemma 3 Vision 12B (Q8)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "gemma3:12b-it-fp16": {
+        "temperature": 0.1,
+        "description": "Google - Gemma 3 Vision 12B (FP16)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "gemma-vision-27b": {
+        "temperature": 0.1,
+        "description": "Google - Gemma 3 Vision 27B (Q4)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 4096
+      },
+      "gemma3:27b-it-q8_0": {
+        "temperature": 0.1,
+        "description": "Google - Gemma 3 Vision 27B (Q8)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 4096
+      },
+      "gemma3:27b-it-fp16": {
+        "temperature": 0.1,
+        "description": "Google - Gemma 3 Vision 27B (FP16)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 4096
+      },
+      "gemma3n:e4b-it-fp16": {
+        "temperature": 0.1,
+        "description": "Google - Gemma 3n E4B (FP16)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "phi4": {
+        "temperature": 0.1,
+        "description": "Microsoft - Phi-4 Plus 14B (Q4)",
+        "supports_vision": false,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "phi4:14b-q8_0": {
+        "temperature": 0.1,
+        "description": "Microsoft - Phi-4 Plus 14B (Q8)",
+        "supports_vision": false,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "phi4:14b-fp16": {
+        "temperature": 0.1,
+        "description": "Microsoft - Phi-4 Plus 14B (FP16)",
+        "supports_vision": false,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "phi4-mini-reasoning": {
+        "temperature": 0.1,
+        "description": "Microsoft - Phi-4 Mini Reasoning 3.8B (Q4)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "olmo2": {
+        "temperature": 0.1,
+        "description": "OLMo 2:13B",
+        "supports_vision": false,
+        "num_ctx": 8192,
+        "num_predict": 2048
+      },
+      "exaone-deep:32b": {
+        "temperature": 0.1,
+        "description": "LG - EXAONE Deep 32B (Q4)",
+        "supports_vision": false,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 4096
+      },
+      "qwq": {
+        "temperature": 0.1,
+        "description": "Qwen - QWQ 32B (Q4)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "qwen3:30b-a3b": {
+        "temperature": 0.1,
+        "description": "Qwen - Qwen3 30B (Q4)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "qwen3:30b-a3b-q8_0": {
+        "temperature": 0.1,
+        "description": "Qwen - Qwen3 30B (Q8)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "qwen3:30b-a3b-fp16": {
+        "temperature": 0.1,
+        "description": "Qwen - Qwen3 30B (FP16)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "mistral-small3.2:latest": {
+        "temperature": 0.1,
+        "description": "Mistral - Small 3.2 24B (Q4)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 4096
+      },
+      "mistral-small3.2:24b-instruct-2506-q8_0": {
+        "temperature": 0.1,
+        "description": "Mistral - Small 3.2 24B (Q8)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 4096
+      },
+      "mistral-small3.2:24b-instruct-2506-fp16": {
+        "temperature": 0.1,
+        "description": "Mistral - Small 3.2 24B (FP16)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 4096
+      },
+      "deepcoder:14b-preview-q8_0": {
+        "temperature": 0.1,
+        "description": "Agentica - DeepCoder 14B (Q8) - [Text Only]",
+        "supports_vision": false,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "deepcoder:14b-preview-fp16": {
+        "temperature": 0.1,
+        "description": "Agentica - DeepCoder 14B (FP16) - [Text Only]",
+        "supports_vision": false,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "granite3.3": {
+        "temperature": 0.1,
+        "description": "IBM - Granite 3.3 8B (Q4)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "granite3.3:2b": {
+        "temperature": 0.1,
+        "description": "IBM - Granite 3.3 2B (Q4)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "llama3.2-vision": {
+        "temperature": 0.1,
+        "description": "Meta - Llama 3.2 Vision 90B (Q4)",
+        "supports_vision": true,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 2048
+      },
+      "llama4:scout": {
+        "temperature": 0.1,
+        "description": "Meta - Llama 4 Scout 109B (Q4)",
+        "supports_vision": true,
+        "num_predict": 1024,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 2048
+      },
+      "llama4:17b-scout-16e-instruct-q8_0": {
+        "temperature": 0.1,
+        "description": "Meta - Llama 4 Scout 109B (Q8)",
+        "supports_vision": true,
+        "num_predict": 1024,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 2048
+      },
+      "llama4:17b-scout-16e-instruct-fp16": {
+        "temperature": 0.1,
+        "description": "Meta - Llama 4 Scout 109B (FP16)",
+        "supports_vision": true,
+        "num_predict": 1024,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 2048
+      },
+      "llama4:maverick": {
+        "temperature": 0.1,
+        "description": "Meta - Llama 4 Maverick 402B (Q4)",
+        "supports_vision": true,
+        "num_predict": 1024,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 2048
+      },
+      "llama4:17b-maverick-128e-instruct-q8_0": {
+        "temperature": 0.1,
+        "description": "Meta - Llama 4 Maverick 402B (Q8)",
+        "supports_vision": true,
+        "num_predict": 1024,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 2048
+      },
+      "llama4:17b-maverick-128e-instruct-fp16": {
+        "temperature": 0.1,
+        "description": "Meta - Llama 4 Maverick 402B (FP16)",
+        "supports_vision": true,
+        "num_predict": 1024,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 2048
+      },
+      "phi4:14b:q8_0": {
+        "temperature": 0.1,
+        "description": "Microsoft - Phi-4 Plus 14B (Q8)",
+        "supports_vision": false,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "phi4:14b:fp16": {
+        "temperature": 0.1,
+        "description": "Microsoft - Phi-4 Plus 14B (FP16)",
+        "supports_vision": false,
+        "num_predict": 2048,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "phi4-reasoning:plus": {
+        "temperature": 0.1,
+        "description": "Microsoft - Phi-4 Reasoning Plus",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "phi4-mini-reasoning:latest": {
+        "temperature": 0.1,
+        "description": "Microsoft - Phi-4 Mini Reasoning",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "phi4-reasoning:14b-plus-q8_0": {
+        "temperature": 0.1,
+        "description": "Microsoft - Phi-4 Reasoning Plus 14B (Q8)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "phi4-reasoning:14b-plus-fp16": {
+        "temperature": 0.1,
+        "description": "Microsoft - Phi-4 Reasoning Plus 14B (FP16)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "deepseek-r1:8b-0528-qwen3-q4_K_M": {
+        "temperature": 0.1,
+        "description": "DeepSeek - R1 8B (Q4)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "deepseek-r1:8b-0528-qwen3-q8_0": {
+        "temperature": 0.1,
+        "description": "DeepSeek - R1 8B (Q8)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "deepseek-r1:8b-0528-qwen3-fp16": {
+        "temperature": 0.1,
+        "description": "DeepSeek - R1 8B (FP16)",
+        "supports_vision": false,
+        "num_predict": 8192,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 8192
+      },
+      "magistral:24b": {
+        "temperature": 0.1,
+        "description": "Mistral - Magistral 24B (Q4) - [Text Only]",
+        "supports_vision": false,
+        "num_predict": 16384,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 16384
+      },
+      "magistral:24b-small-2506-q8_0": {
+        "temperature": 0.1,
+        "description": "Mistral - Magistral 24B (Q8) - [Text Only]",
+        "supports_vision": false,
+        "num_predict": 16384,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 16384
+      },
+      "magistral:24b-small-2506-fp16": {
+        "temperature": 0.1,
+        "description": "Mistral - Magistral 24B (FP16) - [Text Only]",
+        "supports_vision": false,
+        "num_predict": 16384,
+        "repeat_penalty": 1.1,
+        "top_p": 0.9,
+        "top_k": 40,
+        "num_ctx": 16384
+      }
+    },
+    "top_p": 0.9,
+    "top_k": 40
+  },
+  "huggingface": {
+    "temperature": 0.1,
+    "max_new_tokens": 2048,
+    "top_p": 0.9,
+    "top_k": 40,
+    "models": {
+      "tencent/POINTS-Reader": {
+        "temperature": 0.7,
+        "description": "Tencent - POINTS-Reader (Document Extraction with Structured Output)",
+        "supports_vision": true,
+        "max_new_tokens": 2048,
+        "top_p": 0.8,
+        "top_k": 20,
+        "repetition_penalty": 1.05,
+        "do_sample": true
+      },
+      "microsoft/kosmos-2.5": {
+        "temperature": 0.1,
+        "description": "Microsoft - Kosmos-2.5 (OCR Specialist with Markdown Conversion)",
+        "supports_vision": true,
+        "max_new_tokens": 2048,
+        "top_p": 0.9,
+        "top_k": 40
+      },
+      "Qwen/Qwen3-VL-8B-Instruct": {
+        "temperature": 0.1,
+        "description": "Alibaba - Qwen3-VL 8B Instruct (Vision-Language Model)",
+        "supports_vision": true,
+        "max_new_tokens": 2048,
+        "top_p": 0.9,
+        "top_k": 40
+      },
+      "Qwen/Qwen3-VL-4B-Instruct": {
+        "temperature": 0.1,
+        "description": "Alibaba - Qwen3-VL 4B Instruct (Vision-Language Model)",
+        "supports_vision": true,
+        "max_new_tokens": 2048,
+        "top_p": 0.9,
+        "top_k": 40
+      },
+      "Qwen/Qwen3-VL-8B-Instruct-FP8": {
+        "temperature": 0.1,
+        "description": "Alibaba - Qwen3-VL 8B Instruct FP8 (Vision-Language Model)",
+        "supports_vision": true,
+        "max_new_tokens": 2048,
+        "top_p": 0.9,
+        "top_k": 40
+      },
+      "Qwen/Qwen3-VL-4B-Instruct-FP8": {
+        "temperature": 0.1,
+        "description": "Alibaba - Qwen3-VL 4B Instruct FP8 (Vision-Language Model)",
+        "supports_vision": true,
+        "max_new_tokens": 2048,
+        "top_p": 0.9,
+        "top_k": 40
+      },
+      "nanonets/Nanonets-OCR2-3B": {
+        "temperature": 0.1,
+        "description": "Nanonets - OCR2 3B (Advanced Document OCR with Markdown/LaTeX)",
+        "supports_vision": true,
+        "max_new_tokens": 2048,
+        "top_p": 0.9,
+        "top_k": 40,
+        "repetition_penalty": 1.0
+      },
+      "PaddlePaddle/PaddleOCR-VL": {
+        "temperature": 0.1,
+        "description": "PaddlePaddle - OCR-VL 1B (Multilingual Document Parser)",
+        "supports_vision": true,
+        "max_new_tokens": 2048,
+        "top_p": 0.9,
+        "top_k": 40
+      },
+      "allenai/olmOCR-2-7B-1025": {
+        "temperature": 0.1,
+        "description": "AI2 - olmOCR 7B (Advanced OCR for Tables & Math Equations)",
+        "supports_vision": true,
+        "max_new_tokens": 2048,
+        "top_p": 0.9,
+        "top_k": 40
+      }
+    }
+  }
+}
