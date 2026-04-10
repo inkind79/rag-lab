@@ -649,7 +649,7 @@ class RAGRetriever(BaseRetriever):
                     retrieved_results_list,
                     rel_drop_threshold=rel_drop_threshold,
                     abs_score_threshold=abs_score_threshold,
-                    min_results=user_desired_count,  # Use the user's actual desired count, not inflated k
+                    min_results=1,  # Adaptive mode: let score-slope decide, minimum 1 result
                     max_results=max_results,
                     model_name=embedding_model_name
                 )
@@ -928,7 +928,7 @@ class RAGRetriever(BaseRetriever):
                     retrieved_results_list,
                     rel_drop_threshold=rel_drop_threshold,
                     abs_score_threshold=abs_score_threshold,
-                    min_results=k,
+                    min_results=1,  # Adaptive mode: let score-slope decide
                     max_results=max_results,
                     model_name=embedding_model_name
                 )
