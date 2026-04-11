@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAG Lab — Local-First Visual Document Analysis</title>
+  <meta name="description" content="Upload PDFs and images, ask questions, and get answers grounded in your documents — all running on your own hardware. Visual RAG with ColPali embeddings and any Ollama model.">
+  <meta property="og:title" content="RAG Lab">
+  <meta property="og:description" content="Local-first visual document analysis workbench. ColPali embeddings + any Ollama model, on your hardware.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://raglab.io">
+  <meta property="og:image" content="https://raglab.io/images/screenshot-dark.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="RAG Lab">
+  <meta name="twitter:description" content="Local-first visual document analysis workbench.">
+  <meta name="twitter:image" content="https://raglab.io/images/screenshot-dark.png">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23C8993C'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='20' font-weight='bold' fill='%230A0A0C'%3ER%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0A0A0C;
+      --bg-raised: #111114;
+      --bg-surface: #18181C;
+      --border: #222228;
+      --border-hover: #33333A;
+      --text: #EDEDEF;
+      --text-secondary: #8A8A92;
+      --text-tertiary: #5A5A62;
+      --accent: #C8993C;
+      --accent-hover: #DAAD50;
+      --accent-dim: rgba(200, 153, 60, 0.08);
+      --accent-glow: rgba(200, 153, 60, 0.12);
+      --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --max-w: 1140px;
+      --nav-h: 64px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    /* ── Dot grid background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+
+    .container { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      z-index: 100;
+      transition: background 0.4s, border-color 0.4s;
+      border-bottom: 1px solid transparent;
+    }
+    nav.scrolled {
+      background: rgba(10, 10, 12, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom-color: var(--border);
+    }
+    .nav-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-size: 22px;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--text-secondary);
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-github {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .nav-github:hover { border-color: var(--border-hover); background: var(--bg-surface); }
+    .nav-github svg { width: 18px; height: 18px; fill: currentColor; }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+    }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      padding: 160px 0 100px;
+      text-align: center;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 600px;
+      background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 65%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .hero .container { position: relative; z-index: 1; }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      opacity: 0;
+      transform: translateY(16px);
+      animation: fadeUp 0.7s 0.1s forwards;
+    }
+    .hero-eyebrow::before, .hero-eyebrow::after {
+      content: '';
+      width: 24px;
+      height: 1px;
+      background: var(--accent);
+      opacity: 0.4;
+    }
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(40px, 6vw, 72px);
+      font-weight: 700;
+      line-height: 1.08;
+      letter-spacing: -0.025em;
+      color: var(--text);
+      margin-bottom: 24px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.7s 0.2s forwards;
+    }
+    .hero h1 em {
+      font-style: normal;
+      font-weight: 300;
+      color: var(--accent);
+    }
+    .hero-desc {
+      font-size: 17px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      max-width: 580px;
+      margin: 0 auto 40px;
+      font-weight: 300;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.7s 0.35s forwards;
+    }
+    .hero-ctas {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.7s 0.45s forwards;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      background: var(--accent);
+      color: var(--bg);
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      background: transparent;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    }
+    .btn-secondary:hover { border-color: var(--border-hover); background: var(--bg-raised); transform: translateY(-1px); }
+    .btn-secondary svg { width: 18px; height: 18px; fill: currentColor; }
+
+    /* ── Screenshots ── */
+    .screenshots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 960px;
+      margin: 72px auto 0;
+      opacity: 0;
+      transform: translateY(30px);
+      animation: fadeUp 0.8s 0.6s forwards;
+    }
+    .screenshot-frame {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--bg-raised);
+      box-shadow: 0 24px 48px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.02);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .screenshot-frame:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 32px 64px -12px rgba(0,0,0,0.6), 0 0 60px var(--accent-dim);
+    }
+    .screenshot-chrome {
+      background: var(--bg-surface);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .screenshot-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .screenshot-dot:nth-child(1) { background: #FF5F56; }
+    .screenshot-dot:nth-child(2) { background: #FFBD2E; }
+    .screenshot-dot:nth-child(3) { background: #27C93F; }
+    .screenshot-label {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-weight: 400;
+    }
+    .screenshot-frame img {
+      width: 100%;
+      display: block;
+    }
+    @media (max-width: 640px) {
+      .screenshots { grid-template-columns: 1fr; max-width: 480px; }
+    }
+
+    /* ── Section common ── */
+    section { position: relative; z-index: 1; }
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .section-desc {
+      font-size: 16px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      font-weight: 300;
+      max-width: 560px;
+    }
+
+    /* ── Features ── */
+    .features { padding: 120px 0; }
+    .features-header { margin-bottom: 64px; }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .feature-card {
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 24px;
+      transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+    }
+    .feature-card:hover {
+      border-color: rgba(200, 153, 60, 0.25);
+      box-shadow: 0 0 32px var(--accent-dim);
+      transform: translateY(-2px);
+    }
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 9px;
+      background: var(--accent-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+    }
+    .feature-icon svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--accent);
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .feature-card h3 {
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .feature-card p {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      font-weight: 300;
+    }
+    @media (max-width: 1024px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .features-grid { grid-template-columns: 1fr; } }
+
+    /* ── Stack ── */
+    .stack { padding: 0 0 120px; }
+    .stack-header { margin-bottom: 48px; }
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .stack-item {
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+    }
+    .stack-item-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-tertiary);
+      margin-bottom: 8px;
+    }
+    .stack-item-value {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    @media (max-width: 900px) { .stack-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .stack-grid { grid-template-columns: 1fr; } }
+
+    /* ── Quick Start ── */
+    .quickstart { padding: 0 0 120px; }
+    .quickstart-header { margin-bottom: 48px; }
+    .terminal {
+      max-width: 720px;
+      background: #0C0C0F;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 16px 48px -8px rgba(0,0,0,0.4);
+    }
+    .terminal-header {
+      background: var(--bg-surface);
+      padding: 11px 16px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .terminal-title {
+      margin-left: 12px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
+    }
+    .terminal-body {
+      padding: 24px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 2;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .terminal-body .comment { color: var(--text-tertiary); }
+    .terminal-body .prompt { color: var(--accent); user-select: none; }
+    .terminal-body .cmd { color: var(--text); }
+
+    /* ── Requirements ── */
+    .requirements { padding: 0 0 120px; }
+    .requirements-header { margin-bottom: 48px; }
+    .req-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .req-card {
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+    }
+    .req-card-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-tertiary);
+      margin-bottom: 8px;
+    }
+    .req-card-value {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .req-card-note {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 300;
+    }
+    @media (max-width: 900px) { .req-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .req-grid { grid-template-columns: 1fr; } }
+
+    /* ── Footer ── */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 48px 0;
+    }
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .footer-logo {
+      font-family: var(--font-display);
+      font-size: 18px;
+      color: var(--text-secondary);
+    }
+    .footer-links {
+      display: flex;
+      gap: 28px;
+      list-style: none;
+    }
+    .footer-links a {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--text-secondary); }
+    .footer-copy {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .reveal {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      transition-delay: var(--delay, 0s);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── Responsive tweaks ── */
+    @media (max-width: 768px) {
+      .hero { padding: 130px 0 80px; }
+      .hero-desc { font-size: 16px; }
+      .features, .stack, .quickstart, .requirements { padding-top: 80px; padding-bottom: 80px; }
+      .features { padding-top: 80px; }
+      .stack { padding-top: 0; }
+      .quickstart { padding-top: 0; }
+      .requirements { padding-top: 0; }
+      .footer-inner { flex-direction: column; text-align: center; }
+      .terminal-body { font-size: 12px; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Nav ── -->
+  <nav>
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">RAG Lab</a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#stack">Stack</a></li>
+        <li><a href="#quickstart">Quick Start</a></li>
+        <li>
+          <a href="https://github.com/inkind79/rag-lab" class="nav-github" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            GitHub
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- ── Hero ── -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-eyebrow">Open Source &middot; MIT Licensed</div>
+        <h1>Visual document analysis,<br><em>on your hardware</em></h1>
+        <p class="hero-desc">Upload PDFs and images, ask questions, and get answers grounded in your documents. ColPali visual embeddings paired with any Ollama model &mdash; running entirely on your machine.</p>
+        <div class="hero-ctas">
+          <a href="#quickstart" class="btn-primary">Get Started</a>
+          <a href="https://github.com/inkind79/rag-lab" target="_blank" rel="noopener" class="btn-secondary">
+            <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+
+        <div class="screenshots">
+          <div class="screenshot-frame">
+            <div class="screenshot-chrome">
+              <span class="screenshot-dot"></span>
+              <span class="screenshot-dot"></span>
+              <span class="screenshot-dot"></span>
+              <span class="screenshot-label">Light</span>
+            </div>
+            <img src="images/screenshot-light.png" alt="RAG Lab interface — light mode" loading="eager">
+          </div>
+          <div class="screenshot-frame">
+            <div class="screenshot-chrome">
+              <span class="screenshot-dot"></span>
+              <span class="screenshot-dot"></span>
+              <span class="screenshot-dot"></span>
+              <span class="screenshot-label">Dark</span>
+            </div>
+            <img src="images/screenshot-dark.png" alt="RAG Lab interface — dark mode" loading="eager">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Features ── -->
+    <section class="features" id="features">
+      <div class="container">
+        <div class="features-header reveal">
+          <div class="section-label">Capabilities</div>
+          <h2 class="section-title">Everything you need for<br>document intelligence</h2>
+          <p class="section-desc">From single-page lookups to batch analysis across hundreds of documents, RAG Lab handles the full workflow.</p>
+        </div>
+        <div class="features-grid">
+
+          <div class="feature-card reveal" style="--delay: 0s">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <h3>Visual RAG</h3>
+            <p>ColPali embeddings understand tables, figures, and layouts natively. No text extraction pipeline needed.</p>
+          </div>
+
+          <div class="feature-card reveal" style="--delay: 0.06s">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            </div>
+            <h3>Any Ollama Model</h3>
+            <p>Plug in any local model or connect to Ollama Cloud. Vision, text, and reasoning models all work.</p>
+          </div>
+
+          <div class="feature-card reveal" style="--delay: 0.12s">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            </div>
+            <h3>Batch Processing</h3>
+            <p>Feed it a stack of documents. Get per-document streaming responses as they complete.</p>
+          </div>
+
+          <div class="feature-card reveal" style="--delay: 0.18s">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <h3>Full-Document Summarization</h3>
+            <p>Ask &ldquo;summarize&rdquo; and every page gets processed in sequential chunks. No page left behind.</p>
+          </div>
+
+          <div class="feature-card reveal" style="--delay: 0.24s">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </div>
+            <h3>Prompt Templates</h3>
+            <p>Build custom extraction templates &mdash; K-1 line items, invoice fields, whatever your workflow needs.</p>
+          </div>
+
+          <div class="feature-card reveal" style="--delay: 0.30s">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </div>
+            <h3>Conversation Memory</h3>
+            <p>Mem0 remembers context across sessions automatically. Pick up where you left off.</p>
+          </div>
+
+          <div class="feature-card reveal" style="--delay: 0.36s">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+            </div>
+            <h3>Multi-Session</h3>
+            <p>Separate workspaces for separate projects. Switch contexts without losing state.</p>
+          </div>
+
+          <div class="feature-card reveal" style="--delay: 0.42s">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <h3>Adaptive Retrieval</h3>
+            <p>Score-slope analysis finds the right number of pages per query. No manual threshold tuning.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Stack ── -->
+    <section class="stack" id="stack">
+      <div class="container">
+        <div class="stack-header reveal">
+          <div class="section-label">Stack</div>
+          <h2 class="section-title">Built with modern tools</h2>
+        </div>
+        <div class="stack-grid">
+          <div class="stack-item reveal" style="--delay: 0s">
+            <div class="stack-item-label">Frontend</div>
+            <div class="stack-item-value">SvelteKit 2, Svelte 5, TypeScript</div>
+          </div>
+          <div class="stack-item reveal" style="--delay: 0.05s">
+            <div class="stack-item-label">Backend</div>
+            <div class="stack-item-value">FastAPI, Python 3.10+</div>
+          </div>
+          <div class="stack-item reveal" style="--delay: 0.1s">
+            <div class="stack-item-label">Embeddings</div>
+            <div class="stack-item-value">ColQwen3.5 (ColPali)</div>
+          </div>
+          <div class="stack-item reveal" style="--delay: 0.15s">
+            <div class="stack-item-label">Vector Store</div>
+            <div class="stack-item-value">LanceDB (multi-vector)</div>
+          </div>
+          <div class="stack-item reveal" style="--delay: 0.2s">
+            <div class="stack-item-label">LLM Inference</div>
+            <div class="stack-item-value">Ollama (any local model)</div>
+          </div>
+          <div class="stack-item reveal" style="--delay: 0.25s">
+            <div class="stack-item-label">Memory</div>
+            <div class="stack-item-value">Mem0 + ChromaDB</div>
+          </div>
+          <div class="stack-item reveal" style="--delay: 0.3s">
+            <div class="stack-item-label">Auth</div>
+            <div class="stack-item-value">FastAPI-Users, JWT, argon2</div>
+          </div>
+          <div class="stack-item reveal" style="--delay: 0.35s">
+            <div class="stack-item-label">Storage</div>
+            <div class="stack-item-value">SQLite (local, zero-config)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Quick Start ── -->
+    <section class="quickstart" id="quickstart">
+      <div class="container">
+        <div class="quickstart-header reveal">
+          <div class="section-label">Quick Start</div>
+          <h2 class="section-title">Up and running in minutes</h2>
+          <p class="section-desc">Requires Python 3.10+, Node.js 18+, an NVIDIA GPU, and <a href="https://ollama.com" target="_blank" rel="noopener" style="color: var(--accent); border-bottom: 1px solid var(--accent-dim);">Ollama</a>.</p>
+        </div>
+        <div class="terminal reveal" style="--delay: 0.1s">
+          <div class="terminal-header">
+            <span class="screenshot-dot"></span>
+            <span class="screenshot-dot"></span>
+            <span class="screenshot-dot"></span>
+            <span class="terminal-title">terminal</span>
+          </div>
+          <div class="terminal-body"><span class="comment"># Clone and install</span>
+<span class="prompt">$ </span><span class="cmd">git clone https://github.com/inkind79/rag-lab.git</span>
+<span class="prompt">$ </span><span class="cmd">cd rag-lab</span>
+<span class="prompt">$ </span><span class="cmd">python -m venv venv && source venv/bin/activate</span>
+<span class="prompt">$ </span><span class="cmd">pip install -r requirements.txt</span>
+<span class="prompt">$ </span><span class="cmd">cd frontend && npm install && cd ..</span>
+
+<span class="comment"># Pull your models</span>
+<span class="prompt">$ </span><span class="cmd">ollama pull gemma4</span>
+<span class="prompt">$ </span><span class="cmd">ollama pull nomic-embed-text</span>
+
+<span class="comment"># Configure and run</span>
+<span class="prompt">$ </span><span class="cmd">cp .env.example .env</span>
+<span class="prompt">$ </span><span class="cmd">uvicorn fastapi_app:app --host 127.0.0.1 --port 8000</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Requirements ── -->
+    <section class="requirements" id="requirements">
+      <div class="container">
+        <div class="requirements-header reveal">
+          <div class="section-label">Requirements</div>
+          <h2 class="section-title">System requirements</h2>
+        </div>
+        <div class="req-grid">
+          <div class="req-card reveal" style="--delay: 0s">
+            <div class="req-card-label">GPU</div>
+            <div class="req-card-value">NVIDIA 8GB+ VRAM</div>
+            <div class="req-card-note">16GB+ recommended for larger models</div>
+          </div>
+          <div class="req-card reveal" style="--delay: 0.06s">
+            <div class="req-card-label">RAM</div>
+            <div class="req-card-value">16GB+</div>
+            <div class="req-card-note">System memory</div>
+          </div>
+          <div class="req-card reveal" style="--delay: 0.12s">
+            <div class="req-card-label">Storage</div>
+            <div class="req-card-value">20GB+</div>
+            <div class="req-card-note">Models + dependencies</div>
+          </div>
+          <div class="req-card reveal" style="--delay: 0.18s">
+            <div class="req-card-label">OS</div>
+            <div class="req-card-value">Linux</div>
+            <div class="req-card-note">macOS / Windows with Ollama should work</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <span class="footer-logo">RAG Lab</span>
+        <ul class="footer-links">
+          <li><a href="https://github.com/inkind79/rag-lab" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://github.com/inkind79/rag-lab/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
+          <li><a href="https://github.com/inkind79/rag-lab/issues" target="_blank" rel="noopener">Issues</a></li>
+        </ul>
+        <span class="footer-copy">&copy; 2026 RAG Lab Contributors</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Nav scroll state
+    const nav = document.querySelector('nav');
+    const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 40);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    // Scroll-triggered reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        const target = document.querySelector(a.getAttribute('href'));
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>
