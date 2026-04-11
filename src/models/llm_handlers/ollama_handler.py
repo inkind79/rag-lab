@@ -20,27 +20,27 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 # --- Configuration Loading ---
-CONFIG_FILE_PATH = "config/ollama_config.json"
-OLLAMA_MULTI_IMAGE_MODELS = []
-OLLAMA_TEXT_ONLY_MODELS = [] # Keep this if needed for other logic, or load from config too
+CONFIG_FILE_PATH = "config/model_configs.json"
+# Models that do NOT support multiple images and need the collage workaround.
+# Everything else defaults to multi-image (the modern standard).
+OLLAMA_SINGLE_IMAGE_MODELS: list = []
+OLLAMA_TEXT_ONLY_MODELS = []
 
 def _load_ollama_config():
-    """Loads configuration like multi-image models from the JSON file."""
-    global OLLAMA_MULTI_IMAGE_MODELS, OLLAMA_TEXT_ONLY_MODELS
+    """Loads single-image model denylist from config."""
+    global OLLAMA_SINGLE_IMAGE_MODELS
     try:
         if os.path.exists(CONFIG_FILE_PATH):
             with open(CONFIG_FILE_PATH, 'r') as f:
                 config_data = json.load(f)
-            OLLAMA_MULTI_IMAGE_MODELS = config_data.get("multi_image_models", [])
-            # Example: Load text-only models from config if desired
-            # OLLAMA_TEXT_ONLY_MODELS = config_data.get("text_only_models", [])
-            logger.info(f"Loaded Ollama config: {len(OLLAMA_MULTI_IMAGE_MODELS)} multi-image models configured.")
+            OLLAMA_SINGLE_IMAGE_MODELS = config_data.get("single_image_models", [])
+            logger.info(f"Loaded config: {len(OLLAMA_SINGLE_IMAGE_MODELS)} single-image models (collage required).")
         else:
-            logger.warning(f"Ollama config file not found at {CONFIG_FILE_PATH}. Assuming no models support multi-image.")
-            OLLAMA_MULTI_IMAGE_MODELS = []
+            logger.warning(f"Config not found at {CONFIG_FILE_PATH}. Defaulting to multi-image for all models.")
+            OLLAMA_SINGLE_IMAGE_MODELS = []
     except Exception as e:
-        logger.error(f"Error loading Ollama config from {CONFIG_FILE_PATH}: {e}", exc_info=True)
-        OLLAMA_MULTI_IMAGE_MODELS = []
+        logger.error(f"Error loading config from {CONFIG_FILE_PATH}: {e}", exc_info=True)
+        OLLAMA_SINGLE_IMAGE_MODELS = []
 
 # Load config when the module is imported
 _load_ollama_config()
@@ -83,14 +83,12 @@ class OllamaHandler(BaseLLMHandler):
         # Determine if the model is text-only based on the original model_choice
         self.is_text_only = model_choice in OLLAMA_TEXT_ONLY_MODELS
 
-        # Determine if the model supports multiple images based on loaded config
-        # Models like Llama 3.2 Vision do NOT support multiple images and need to use the collage approach
-        # Models like Gemma 3 Vision and Mistral Small 3.1 DO support multiple images directly
-        self.supports_multiple_images = self.api_model_name in OLLAMA_MULTI_IMAGE_MODELS
+        # Default to multi-image (modern standard). Only use collage for known single-image models.
+        self.supports_multiple_images = self.api_model_name not in OLLAMA_SINGLE_IMAGE_MODELS
         if self.supports_multiple_images:
-            logger.info(f"Model {self.api_model_name} is configured to support multiple images directly.")
+            logger.info(f"Model {self.api_model_name} supports multiple images directly.")
         else:
-            logger.info(f"Model {self.api_model_name} does NOT support multiple images directly - will use collage approach if needed.")
+            logger.info(f"Model {self.api_model_name} requires collage for multiple images.")
 
 
     def _create_collage(self, image_paths: List[str], session_id: str) -> Optional[str]:
