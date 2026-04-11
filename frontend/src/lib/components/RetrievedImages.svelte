@@ -181,18 +181,15 @@
 								{/if}
 							</div>
 							{#if img.text_preview}
-								{@const snippetId = `snippet-${img.path}-${img.page_num || 0}`}
 								<div class="citation-snippet">
 									<button class="snippet-toggle" onclick={(e) => {
-										const el = document.getElementById(snippetId);
-										if (el) el.classList.toggle('expanded');
-										const btn = (e.currentTarget as HTMLElement);
-										btn.classList.toggle('open');
+										const card = (e.currentTarget as HTMLElement).parentElement;
+										if (card) card.classList.toggle('open');
 									}}>
 										<span class="snippet-label">Page {img.page_num || '?'}</span>
 										<span class="snippet-arrow">▸</span>
 									</button>
-									<div id={snippetId} class="snippet-body">
+									<div class="snippet-body">
 										<p>{img.text_preview}</p>
 									</div>
 								</div>
@@ -294,18 +291,16 @@
 	.snippet-toggle:hover { color: var(--text-heading); }
 	.snippet-label { font-weight: 600; }
 	.snippet-arrow { transition: transform 0.2s; font-size: 0.55rem; display: inline-block; }
-	.snippet-toggle.open .snippet-arrow { transform: rotate(90deg); }
+	.citation-snippet.open .snippet-arrow { transform: rotate(90deg); }
 	.snippet-body {
 		max-height: 0;
 		overflow: hidden;
 		transition: max-height 0.25s ease;
 	}
-	.snippet-body.expanded {
+	.citation-snippet.open .snippet-body {
 		max-height: 300px;
 		overflow-y: auto;
 	}
-	.snippet-body.expanded + .snippet-toggle .snippet-arrow,
-	:global(.snippet-body.expanded) { }
 	.snippet-body p {
 		font-size: 0.68rem;
 		line-height: 1.45;
