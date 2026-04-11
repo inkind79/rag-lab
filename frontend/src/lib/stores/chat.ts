@@ -13,6 +13,7 @@ export interface RetrievedImage {
 	text_preview?: string;
 	result_type?: string;
 	source?: string;
+	page_num?: number;
 }
 
 export interface ChatMessage {

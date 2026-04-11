@@ -354,8 +354,9 @@ def generate_streaming_response(query, session_id, generation_model, session_dat
                                 }
                                 # Carry text citation from hybrid retriever
                                 if text_content:
-                                    img_entry['text_preview'] = text_content[:200]
+                                    img_entry['text_preview'] = text_content
                                     img_entry['source'] = item.get('original_filename', '')
+                                    img_entry['page_num'] = item.get('page_num', 0)
                                 retrieved_images.append(img_entry)
 
                         logger.info(f"Retrieved {len(retrieved_images)} images, {len(retrieved_text_chunks)} text chunks for streaming RAG")

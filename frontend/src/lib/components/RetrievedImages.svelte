@@ -181,8 +181,20 @@
 								{/if}
 							</div>
 							{#if img.text_preview}
+								{@const snippetId = `snippet-${img.path}-${img.page_num || 0}`}
 								<div class="citation-snippet">
-									<p>{img.text_preview}</p>
+									<button class="snippet-toggle" onclick={(e) => {
+										const el = document.getElementById(snippetId);
+										if (el) el.classList.toggle('expanded');
+										const btn = (e.currentTarget as HTMLElement);
+										btn.classList.toggle('open');
+									}}>
+										<span class="snippet-label">Page {img.page_num || '?'}</span>
+										<span class="snippet-arrow">▸</span>
+									</button>
+									<div id={snippetId} class="snippet-body">
+										<p>{img.text_preview}</p>
+									</div>
 								</div>
 							{/if}
 						</div>
@@ -261,21 +273,47 @@
 	.citation-snippet {
 		width: 140px;
 		margin-top: 0.25rem;
-		padding: 0.3rem 0.4rem;
 		background: var(--bg-hover);
 		border: 1px solid var(--border);
 		border-radius: 4px;
-	}
-	.citation-snippet p {
-		font-size: 0.68rem;
-		line-height: 1.4;
-		color: var(--text-muted);
-		max-height: 3.8em;
 		overflow: hidden;
+	}
+	.snippet-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		padding: 0.25rem 0.4rem;
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: var(--text-muted);
+		font-size: 0.65rem;
+		font-family: inherit;
+	}
+	.snippet-toggle:hover { color: var(--text-heading); }
+	.snippet-label { font-weight: 600; }
+	.snippet-arrow { transition: transform 0.2s; font-size: 0.55rem; display: inline-block; }
+	.snippet-toggle.open .snippet-arrow { transform: rotate(90deg); }
+	.snippet-body {
+		max-height: 0;
+		overflow: hidden;
+		transition: max-height 0.25s ease;
+	}
+	.snippet-body.expanded {
+		max-height: 300px;
+		overflow-y: auto;
+	}
+	.snippet-body.expanded + .snippet-toggle .snippet-arrow,
+	:global(.snippet-body.expanded) { }
+	.snippet-body p {
+		font-size: 0.68rem;
+		line-height: 1.45;
+		color: var(--text-muted);
 		margin: 0;
-		display: -webkit-box;
-		-webkit-line-clamp: 3;
-		-webkit-box-orient: vertical;
+		padding: 0 0.4rem 0.35rem;
+		white-space: pre-wrap;
+		word-break: break-word;
 	}
 	.image-group { margin-bottom: 0.5rem; }
 	.group-header {
