@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com)
-[![SvelteKit](https://img.shields.io/badge/SvelteKit-5-FF3E00.svg)](https://svelte.dev)
+[![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00.svg)](https://svelte.dev)
 
 A local-first visual document analysis workbench. Upload PDFs and images, ask questions, and get answers grounded in your documents — all running on your own hardware.
 
@@ -82,16 +82,6 @@ cd frontend && npm run dev
 
 Open **http://localhost:5173** — create an account at `/register`, then sign in.
 
-### Docker (alternative)
-
-```bash
-cp .env.example .env
-cp config/users.example.json config/users.json
-docker compose up
-```
-
-> Requires [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/) for GPU passthrough.
-
 ## Architecture
 
 ```
@@ -109,16 +99,14 @@ rag-lab/
 │           ├── components/     # Markdown, DocumentPanel, TemplatePanel, Settings
 │           ├── stores/         # Svelte stores (chat, session, toast)
 │           └── api/            # API client (streamChat, sessions, documents)
-├── config/                     # Model configs, user credentials template
-├── Dockerfile                  # PyTorch CUDA base image
-└── docker-compose.yml          # Full stack (backend + frontend + redis)
+└── config/                     # Model configs, global settings
 ```
 
 ## Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | SvelteKit 5, TypeScript |
+| Frontend | SvelteKit 2, Svelte 5, TypeScript |
 | Backend | FastAPI, Python 3.10+ |
 | Embeddings | ColQwen3.5 (ColPali visual embeddings) |
 | Vector store | LanceDB (multi-vector, local) |
