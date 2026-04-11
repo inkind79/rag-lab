@@ -113,13 +113,17 @@ class SearchResultsCache:
                 use_score_slope = str(session_data.get('use_score_slope', True))
                 rel_drop_threshold = str(session_data.get('rel_drop_threshold', 0.65))
                 abs_score_threshold = str(session_data.get('abs_score_threshold', 0.25))
+                retrieval_method = str(session_data.get('retrieval_method', 'colpali'))
+                hybrid_visual_weight = str(session_data.get('hybrid_visual_weight', 0.6))
 
                 # Add these settings to the key parts
                 key_parts.extend([
                     f"retrieval_count:{retrieval_count}",
                     f"use_score_slope:{use_score_slope}",
                     f"rel_drop_threshold:{rel_drop_threshold}",
-                    f"abs_score_threshold:{abs_score_threshold}"
+                    f"abs_score_threshold:{abs_score_threshold}",
+                    f"retrieval_method:{retrieval_method}",
+                    f"hybrid_visual_weight:{hybrid_visual_weight}",
                 ])
                 logger.info(f"Including retrieval settings in cache key: count={retrieval_count}, score_slope={use_score_slope}")
         except Exception as e:
