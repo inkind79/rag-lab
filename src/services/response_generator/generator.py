@@ -347,11 +347,16 @@ def generate_streaming_response(query, session_id, generation_model, session_dat
                                 # Store both relative path (for frontend) and full path (for model)
                                 full_path = image_path if image_path.startswith('static/') else os.path.join('static', image_path).replace('\\', '/')
 
-                                retrieved_images.append({
+                                img_entry = {
                                     'path': relative_path,
                                     'full_path': full_path,
-                                    'score': score
-                                })
+                                    'score': score,
+                                }
+                                # Carry text citation from hybrid retriever
+                                if text_content:
+                                    img_entry['text_preview'] = text_content[:200]
+                                    img_entry['source'] = item.get('original_filename', '')
+                                retrieved_images.append(img_entry)
 
                         logger.info(f"Retrieved {len(retrieved_images)} images, {len(retrieved_text_chunks)} text chunks for streaming RAG")
 

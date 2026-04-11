@@ -72,13 +72,15 @@ class HybridWeightedRetriever(BaseRetriever):
             if key not in visual_pages or r['score'] > visual_pages[key]['score']:
                 visual_pages[key] = {'score': r['score'], 'result': r}
 
-        # Group BM25 chunks to page level (max score per page)
+        # Group BM25 chunks to page level (max score per page, keep best text)
         bm25_pages = {}  # (filename, page_num) -> max_score
+        bm25_texts = {}  # (filename, page_num) -> best matching text chunk
         for r in bm25_results:
             key = (r.get('original_filename', ''), r.get('page_num', 0))
             score = r.get('score', 0.0)
             if key not in bm25_pages or score > bm25_pages[key]:
                 bm25_pages[key] = score
+                bm25_texts[key] = r.get('text_content', '')
 
         # Normalize scores to [0, 1]
         norm_visual = _min_max_normalize({k: v['score'] for k, v in visual_pages.items()})
@@ -106,6 +108,9 @@ class HybridWeightedRetriever(BaseRetriever):
                     'retriever_name': 'hybrid',
                 }
             result['retriever_name'] = 'hybrid'
+            # Attach BM25 text content as citation snippet
+            if key in bm25_texts and bm25_texts[key]:
+                result['text_content'] = bm25_texts[key]
             fused.append(result)
 
         fused.sort(key=lambda x: x['score'], reverse=True)

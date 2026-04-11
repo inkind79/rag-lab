@@ -180,6 +180,11 @@
 									</label>
 								{/if}
 							</div>
+							{#if img.text_preview}
+								<div class="citation-snippet">
+									<p>{img.text_preview}</p>
+								</div>
+							{/if}
 						</div>
 					{/each}
 				</div>
@@ -253,6 +258,25 @@
 
 	.image-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 	.image-card { flex-shrink: 0; }
+	.citation-snippet {
+		width: 140px;
+		margin-top: 0.25rem;
+		padding: 0.3rem 0.4rem;
+		background: var(--bg-hover);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+	}
+	.citation-snippet p {
+		font-size: 0.68rem;
+		line-height: 1.4;
+		color: var(--text-muted);
+		max-height: 3.8em;
+		overflow: hidden;
+		margin: 0;
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+	}
 	.image-group { margin-bottom: 0.5rem; }
 	.group-header {
 		font-size: 0.72rem; font-weight: 700; color: var(--text-heading);
