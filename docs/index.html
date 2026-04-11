@@ -128,7 +128,7 @@
     .nav-github svg { width: 18px; height: 18px; fill: currentColor; }
 
     @media (max-width: 768px) {
-      .nav-links { display: none; }
+      .nav-links li:not(:last-child) { display: none; }
     }
 
     /* ── Hero ── */
@@ -749,9 +749,12 @@
 <span class="prompt">$ </span><span class="cmd">ollama pull gemma4</span>
 <span class="prompt">$ </span><span class="cmd">ollama pull nomic-embed-text</span>
 
-<span class="comment"># Configure and run</span>
+<span class="comment"># Configure and run (two terminals)</span>
 <span class="prompt">$ </span><span class="cmd">cp .env.example .env</span>
-<span class="prompt">$ </span><span class="cmd">uvicorn fastapi_app:app --host 127.0.0.1 --port 8000</span></div>
+<span class="prompt">$ </span><span class="cmd">uvicorn fastapi_app:app --host 127.0.0.1 --port 8000</span>
+<span class="prompt">$ </span><span class="cmd">cd frontend && npm run dev</span>
+
+<span class="comment"># Open http://localhost:5173 — register an account, then sign in</span></div>
         </div>
       </div>
     </section>
