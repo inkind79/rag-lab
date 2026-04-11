@@ -740,16 +740,21 @@ class RAGRetriever(BaseRetriever):
                         logger.info(f"Document Summary detected (k=100) - using full k={k} instead of user's retrieval count")
                         limited_results = retrieved_results_list[:k]
                         user_retrieval_count = k  # Set for logging purposes
+                    elif kwargs.get('_skip_result_cap'):
+                        # Called by a parent hybrid retriever — respect the k passed, not session settings
+                        limited_results = retrieved_results_list[:k]
+                        user_retrieval_count = k
+                        logger.info(f"Hybrid child mode: returning up to {k} results (skipping session retrieval_count cap)")
                     else:
                         # For normal templates, use the user's retrieval count setting
                         user_retrieval_count = k  # Default to the provided k value
                         if session_data and 'retrieval_count' in session_data:
                             user_retrieval_count = int(session_data.get('retrieval_count', k))
                             logger.info(f"Using user's retrieval count setting: {user_retrieval_count}")
-                        
+
                         # Limit the results to the user's retrieval count setting
                         limited_results = retrieved_results_list[:user_retrieval_count]
-                    
+
                     logger.info(f"Limited results to {len(limited_results)} documents (from {len(retrieved_results_list)})")
 
                     # Get OCR cache for token counting

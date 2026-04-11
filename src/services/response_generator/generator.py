@@ -265,6 +265,11 @@ def generate_streaming_response(query, session_id, generation_model, session_dat
                         logger.info(f"Document Summary mode: retrieving up to {max_images} pages")
                     else:
                         max_images = session_data.get('retrieval_count', 20)
+                        # When adaptive is on with hybrid, use a larger pool and let
+                        # score-slope analysis decide the final count
+                        if (session_data.get('use_score_slope') and
+                                retrieval_method == 'hybrid' and max_images < 10):
+                            max_images = 10
                         logger.info(f"Performing retrieval with max_images={max_images}")
 
                     # Get the RAG model for retrieval from the passed rag_models parameter
@@ -284,6 +289,9 @@ def generate_streaming_response(query, session_id, generation_model, session_dat
                         k=max_images,
                         selected_filenames=selected_docs,
                         visual_weight=session_data.get('hybrid_visual_weight', 0.6),
+                        use_score_slope=session_data.get('use_score_slope', False),
+                        rel_drop_threshold=session_data.get('rel_drop_threshold', 0.65),
+                        abs_score_threshold=session_data.get('abs_score_threshold', 0.25),
                     )
 
                     # Convert retriever results to streaming format

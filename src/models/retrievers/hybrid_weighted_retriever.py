@@ -46,8 +46,8 @@ class HybridWeightedRetriever(BaseRetriever):
         visual_weight = kwargs.pop('visual_weight', self._default_visual_weight)
         text_weight = 1.0 - visual_weight
 
-        # Over-retrieve from both, disable score-slope on children
-        child_kwargs = {**kwargs, 'use_score_slope': False}
+        # Over-retrieve from both, disable score-slope and result cap on children
+        child_kwargs = {**kwargs, 'use_score_slope': False, '_skip_result_cap': True}
         over_k = min(max(k * 3, 15), 100)
 
         visual_results = self._colpali.retrieve_documents(
@@ -109,6 +109,27 @@ class HybridWeightedRetriever(BaseRetriever):
             fused.append(result)
 
         fused.sort(key=lambda x: x['score'], reverse=True)
+
+        # Apply score-slope analysis to fused results if requested
+        use_score_slope = kwargs.get('use_score_slope')
+        if use_score_slope and len(fused) > 1:
+            from src.models.vector_stores.score_analysis import analyze_score_distribution
+            # Hybrid fused scores are min-max normalized (top=1.0), so the
+            # relative drops appear steeper than raw ColPali scores.
+            # Use more permissive thresholds to avoid over-trimming.
+            filtered, analysis = analyze_score_distribution(
+                fused,
+                rel_drop_threshold=0.45,
+                abs_score_threshold=0.10,
+                min_results=1,
+                max_results=k,
+            )
+            logger.info(
+                f"Hybrid retriever: {len(visual_results)} visual + {len(bm25_results)} BM25 "
+                f"→ {len(fused)} merged → {len(filtered)} after score-slope "
+                f"(weights: visual={visual_weight:.2f}, text={text_weight:.2f})"
+            )
+            return filtered
 
         logger.info(
             f"Hybrid retriever: {len(visual_results)} visual + {len(bm25_results)} BM25 "

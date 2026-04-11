@@ -110,6 +110,11 @@
 			} else {
 				messages.set([]);
 			}
+			// Sync chat bar toggles with session settings
+			if (data) {
+				adaptiveEnabled = data.use_score_slope ?? false;
+				ocrEnabled = data.use_ocr ?? false;
+			}
 		} catch {
 			messages.set([]);
 		}
@@ -469,6 +474,10 @@
 									{#each modelOptions as m}<option value={m.value}>{m.label}</option>{/each}
 								</select>
 							{/if}
+							<button type="button" class="action-pill" class:active={ocrEnabled}
+								onclick={toggleOcr}>OCR</button>
+							<button type="button" class="action-pill" class:active={adaptiveEnabled}
+								onclick={toggleAdaptive}>Adaptive</button>
 						</div>
 						<button type="submit" class="send-btn" disabled={$isStreaming || (!query.trim() && pastedImages.length === 0)}>
 							{#if $isStreaming}
