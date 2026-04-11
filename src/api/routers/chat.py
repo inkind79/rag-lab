@@ -173,14 +173,16 @@ async def stream_chat(
                             logger.info(f"Saved chat history ({len(history)} messages) to session {session_id}")
 
                             # Store conversation in Mem0 for cross-session memory
-                            try:
-                                from src.models.memory.mem0_service import add_conversation
-                                mem0_messages = [{"role": "user", "content": req.query}]
-                                for doc in doc_responses:
-                                    mem0_messages.append({"role": "assistant", "content": doc['content'][:500]})
-                                add_conversation(user_id, mem0_messages, session_id=session_id)
-                            except Exception as mem_err:
-                                logger.debug(f"Mem0 storage skipped: {mem_err}")
+                            # Skip for RAG mode: document-grounded Q&A shouldn't pollute memory
+                            if not req.is_rag_mode:
+                                try:
+                                    from src.models.memory.mem0_service import add_conversation
+                                    mem0_messages = [{"role": "user", "content": req.query}]
+                                    for doc in doc_responses:
+                                        mem0_messages.append({"role": "assistant", "content": doc['content'][:500]})
+                                    add_conversation(user_id, mem0_messages, session_id=session_id)
+                                except Exception as mem_err:
+                                    logger.debug(f"Mem0 storage skipped: {mem_err}")
 
                     except Exception as e:
                         logger.error(f"Error saving chat history: {e}")
