@@ -291,13 +291,13 @@
 	.snippet-toggle:hover { color: var(--text-heading); }
 	.snippet-label { font-weight: 600; }
 	.snippet-arrow { transition: transform 0.2s; font-size: 0.55rem; display: inline-block; }
-	.citation-snippet.open .snippet-arrow { transform: rotate(90deg); }
+	:global(.citation-snippet.open) .snippet-arrow { transform: rotate(90deg); }
 	.snippet-body {
 		max-height: 0;
 		overflow: hidden;
 		transition: max-height 0.25s ease;
 	}
-	.citation-snippet.open .snippet-body {
+	:global(.citation-snippet.open) .snippet-body {
 		max-height: 300px;
 		overflow-y: auto;
 	}
