@@ -324,7 +324,7 @@
     .features-header { margin-bottom: 64px; }
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 16px;
     }
     .feature-card {
@@ -616,10 +616,18 @@
               <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </div>
             <h3>Visual RAG</h3>
-            <p>ColPali embeddings understand tables, figures, and layouts natively. No text extraction pipeline needed.</p>
+            <p>ColPali embeddings understand tables, figures, and layouts natively. Optional OCR mode for text-preferring LLMs.</p>
           </div>
 
           <div class="feature-card reveal" style="--delay: 0.06s">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="3"/><circle cx="16" cy="12" r="3"/><path d="M11 12h2"/><path d="M3 12h2"/><path d="M19 12h2"/></svg>
+            </div>
+            <h3>Hybrid Retrieval</h3>
+            <p>Visual search + keyword matching with weighted score fusion. Citation snippets show exactly which text matched your query.</p>
+          </div>
+
+          <div class="feature-card reveal" style="--delay: 0.12s">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
             </div>
@@ -627,7 +635,7 @@
             <p>Plug in any local model or connect to Ollama Cloud. Vision, text, and reasoning models all work.</p>
           </div>
 
-          <div class="feature-card reveal" style="--delay: 0.12s">
+          <div class="feature-card reveal" style="--delay: 0.18s">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             </div>
@@ -635,7 +643,7 @@
             <p>Feed it a stack of documents. Get per-document streaming responses as they complete.</p>
           </div>
 
-          <div class="feature-card reveal" style="--delay: 0.18s">
+          <div class="feature-card reveal" style="--delay: 0.24s">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </div>
@@ -643,7 +651,7 @@
             <p>Ask &ldquo;summarize&rdquo; and every page gets processed in sequential chunks. No page left behind.</p>
           </div>
 
-          <div class="feature-card reveal" style="--delay: 0.24s">
+          <div class="feature-card reveal" style="--delay: 0.30s">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             </div>
@@ -651,15 +659,15 @@
             <p>Build custom extraction templates &mdash; K-1 line items, invoice fields, whatever your workflow needs.</p>
           </div>
 
-          <div class="feature-card reveal" style="--delay: 0.30s">
+          <div class="feature-card reveal" style="--delay: 0.36s">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
             </div>
             <h3>Conversation Memory</h3>
-            <p>Mem0 remembers context across sessions automatically. Pick up where you left off.</p>
+            <p>Mem0 remembers context across chat sessions. Disabled during RAG to keep answers document-grounded.</p>
           </div>
 
-          <div class="feature-card reveal" style="--delay: 0.36s">
+          <div class="feature-card reveal" style="--delay: 0.42s">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
             </div>
@@ -667,7 +675,7 @@
             <p>Separate workspaces for separate projects. Switch contexts without losing state.</p>
           </div>
 
-          <div class="feature-card reveal" style="--delay: 0.42s">
+          <div class="feature-card reveal" style="--delay: 0.48s">
             <div class="feature-icon">
               <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             </div>

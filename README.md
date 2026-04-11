@@ -17,11 +17,12 @@ RAG Lab uses **ColPali visual embeddings** to understand document layout and con
 ## Features
 
 - **Visual RAG** — ColPali embeddings capture page layout, tables, and figures natively without text extraction. Optional OCR mode extracts text from retrieved pages for LLMs that work better with text input.
+- **Hybrid retrieval** — Combines ColPali visual search with BM25 keyword search for the best of both worlds. Visual embeddings find charts and layouts; keyword matching anchors on specific terms. Matching text snippets appear as expandable citations below each retrieved page.
 - **Any Ollama model** — Works with any local model, plus [Ollama Cloud](https://docs.ollama.com/cloud) models via API key (Settings > Advanced). Vision, text, and reasoning models supported.
 - **Batch processing** — Process multiple documents with per-document streaming responses.
 - **Full-document summarization** — Generic queries ("summarize") automatically process all pages in sequential chunks.
 - **Prompt templates** — Create custom extraction templates (e.g., K-1 line item extractor) for structured data output.
-- **Conversation memory** — Mem0 automatically extracts and recalls context across sessions.
+- **Conversation memory** — Mem0 automatically extracts and recalls context across chat sessions (disabled during RAG to keep answers document-grounded).
 - **Multi-session** — Create, switch, and manage independent analysis sessions.
 - **Adaptive retrieval** — Score-slope analysis dynamically adjusts how many pages are retrieved per query.
 
