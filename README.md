@@ -119,7 +119,7 @@ rag-lab/
 - **GPU**: NVIDIA with 8GB+ VRAM (16GB+ recommended for larger models)
 - **RAM**: 16GB+
 - **Storage**: 20GB+ (models + dependencies)
-- **OS**: Linux (developed on Ubuntu/WSL2). macOS/Windows with Ollama should work.
+- **OS**: Linux / WSL2 (requires NVIDIA CUDA support)
 
 ## Contributing
 
