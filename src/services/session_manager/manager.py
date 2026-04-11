@@ -57,10 +57,11 @@ DEFAULT_GLOBAL_SETTINGS = {
   "abs_score_threshold": 0.25,  # Default absolute score threshold for score-slope analysis
   "show_score_viz": False,      # Whether to show score distribution visualization
   # RAG Lab retrieval method settings
-  "retrieval_method": "colpali",          # colpali | bm25 | dense | hybrid_rrf
+  "retrieval_method": "colpali",          # colpali | bm25 | dense | hybrid_rrf | hybrid
   "text_embedding_model": "BAAI/bge-m3",  # Used when retrieval_method is dense or hybrid_rrf
   "chunk_size": 512,                       # Text chunking: characters per chunk
   "chunk_overlap": 64,                     # Text chunking: overlap between chunks
+  "hybrid_visual_weight": 0.6,             # Weight for visual vs keyword in hybrid mode (0=keyword, 1=visual)
 }
 
 def _deep_merge_model_params(base: Dict, overlay: Dict) -> Dict:

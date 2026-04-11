@@ -190,7 +190,7 @@ def generate_streaming_response(query, session_id, generation_model, session_dat
                 logger.info(f"Using dense retrieval with {text_model}")
 
             else:
-                # ColPali or hybrid_rrf: load ColPali adapter
+                # ColPali, hybrid_rrf, or hybrid: load ColPali adapter
                 # Check if the model is already cached in RAG_models first
                 if rag_models:
                     try:
@@ -217,7 +217,7 @@ def generate_streaming_response(query, session_id, generation_model, session_dat
             if rag_model and selected_docs:
                 try:
                     # Select retriever based on retrieval method
-                    if retrieval_method in ('bm25', 'dense', 'hybrid_rrf'):
+                    if retrieval_method in ('bm25', 'dense', 'hybrid_rrf', 'hybrid'):
                         # Use the registry for new retrieval methods
                         from src.models.retriever_registry import RetrieverRegistry
                         retriever_func = RetrieverRegistry.get_retriever(retrieval_method, rag_model)
@@ -282,7 +282,8 @@ def generate_streaming_response(query, session_id, generation_model, session_dat
                         query=enhanced_query_for_retrieval,
                         session_id=session_id,
                         k=max_images,
-                        selected_filenames=selected_docs
+                        selected_filenames=selected_docs,
+                        visual_weight=session_data.get('hybrid_visual_weight', 0.6),
                     )
 
                     # Convert retriever results to streaming format

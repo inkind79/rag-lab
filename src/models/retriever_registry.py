@@ -22,7 +22,7 @@ class RetrieverRegistry:
 
     _registry: Dict[str, Callable[[], BaseRetriever]] = {}
     _instances: Dict[str, BaseRetriever] = {}
-    _lock = threading.Lock()
+    _lock = threading.RLock()  # Reentrant: hybrid/rrf factories call get_retriever() recursively
 
     @classmethod
     def register(cls, name: str, factory: Callable[[], BaseRetriever]):
@@ -112,10 +112,18 @@ def register_default_retrievers():
         bm25 = RetrieverRegistry.get_retriever("bm25")
         return RRFHybridRetriever(retrievers=[colpali, bm25])
 
+    # Weighted hybrid (ColPali + BM25) — normalized score fusion
+    def _create_hybrid():
+        from src.models.retrievers.hybrid_weighted_retriever import HybridWeightedRetriever
+        colpali = RetrieverRegistry.get_retriever("colpali")
+        bm25 = RetrieverRegistry.get_retriever("bm25")
+        return HybridWeightedRetriever(colpali_retriever=colpali, bm25_retriever=bm25)
+
     RetrieverRegistry.register("colpali", _create_colpali)
     RetrieverRegistry.register("bm25", _create_bm25)
     RetrieverRegistry.register("dense", _create_dense)
     RetrieverRegistry.register("hybrid_rrf", _create_rrf)
+    RetrieverRegistry.register("hybrid", _create_hybrid)
 
 
 # Auto-register on import

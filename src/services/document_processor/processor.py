@@ -699,7 +699,7 @@ def index_documents(session_id, session_folder, metadata_list, session_data,
     """
     Dispatch function that indexes documents using the method specified in session_data.
 
-    For 'colpali': calls index_documents_for_rag (visual pipeline)
+    For 'colpali' or 'hybrid': calls index_documents_for_rag (visual pipeline) + BM25 co-indexing
     For 'bm25': calls index_documents_for_text_retrieval (text pipeline)
     For 'dense': calls index_documents_for_text_retrieval with embedding adapter
     For 'hybrid_rrf': calls both visual and text pipelines
@@ -722,12 +722,25 @@ def index_documents(session_id, session_folder, metadata_list, session_data,
 
     logger.info(f"Indexing documents with method='{retrieval_method}' for session {session_id}")
 
-    if retrieval_method == 'colpali':
-        # Existing visual pipeline
-        return index_documents_for_rag(
+    if retrieval_method in ('colpali', 'hybrid'):
+        # Visual pipeline (always)
+        vis_success, vis_msg, vis_model = index_documents_for_rag(
             session_id, session_folder, metadata_list,
             indexer_model, app_config, rag_models
         )
+        # BM25 co-indexing for hybrid mode support (best-effort, non-fatal)
+        try:
+            txt_success, txt_msg, _ = index_documents_for_text_retrieval(
+                session_id, session_folder, metadata_list,
+                'bm25', None, chunk_size, chunk_overlap
+            )
+            if txt_success:
+                logger.info(f"BM25 co-index completed: {txt_msg}")
+            else:
+                logger.warning(f"BM25 co-index failed (non-fatal): {txt_msg}")
+        except Exception as e:
+            logger.warning(f"BM25 co-indexing failed (non-fatal): {e}")
+        return vis_success, vis_msg, vis_model
 
     elif retrieval_method in ('bm25', 'dense'):
         # Text-based pipeline

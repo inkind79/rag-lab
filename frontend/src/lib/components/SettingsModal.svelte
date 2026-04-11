@@ -22,6 +22,7 @@
 	let retrieval_count = $state(1);
 	let chunk_size = $state(512);
 	let chunk_overlap = $state(64);
+	let hybrid_visual_weight = $state(0.6);
 	let similarity_threshold = $state(0.2);
 	let use_score_slope = $state(true);
 	let rel_drop_threshold = $state(0.65);
@@ -64,6 +65,7 @@
 
 	const allMethods = [
 		{ value: 'colpali', label: 'ColPali (Visual)' },
+		{ value: 'hybrid', label: 'Hybrid (Visual + Keyword)' },
 		{ value: 'bm25', label: 'BM25 (Keyword)' },
 		{ value: 'dense', label: 'Dense (Semantic)' },
 		{ value: 'hybrid_rrf', label: 'Hybrid RRF' },
@@ -74,13 +76,13 @@
 		{ value: 'tsystems/colqwen2.5-3b-multilingual-v1.0-merged', label: 'ColQwen2.5 3B — Legacy', type: 'visual' as const },
 		{ value: 'nomic-ai/colnomic-embed-multimodal-3b', label: 'ColNomic 3B', type: 'visual' as const },
 	];
-	// Visual models only support ColPali; text models support keyword/semantic methods
+	// Visual models support ColPali and Hybrid; text models support keyword/semantic methods
 	let methods = $derived.by(() => {
 		const selected = embeddingModels.find(m => m.value === indexer_model);
 		if (!selected || selected.type === 'visual') {
-			return allMethods.filter(m => m.value === 'colpali');
+			return allMethods.filter(m => m.value === 'colpali' || m.value === 'hybrid');
 		}
-		return allMethods.filter(m => m.value !== 'colpali');
+		return allMethods.filter(m => m.value !== 'colpali' && m.value !== 'hybrid');
 	});
 	// Auto-correct retrieval_method when model changes
 	$effect(() => {
@@ -173,6 +175,7 @@
 				rel_drop_threshold = data.rel_drop_threshold ?? 0.65;
 				abs_score_threshold = data.abs_score_threshold ?? 0.25;
 				distance_metric = data.distance_metric || 'cosine';
+				hybrid_visual_weight = data.hybrid_visual_weight ?? 0.6;
 				// Advanced
 				resized_height = data.resized_height || 448;
 				resized_width = data.resized_width || 448;
@@ -197,7 +200,7 @@
 				generation_model,
 				model_params: { [provider]: params },
 				retrieval_method, indexer_model, retrieval_count,
-				chunk_size, chunk_overlap, similarity_threshold,
+				chunk_size, chunk_overlap, similarity_threshold, hybrid_visual_weight,
 				use_score_slope, rel_drop_threshold, abs_score_threshold,
 				distance_metric, resized_height, resized_width,
 				use_ocr, ocr_engine, save_globally,
@@ -321,7 +324,18 @@
 						<select bind:value={retrieval_method} class="full">
 							{#each methods as m}<option value={m.value}>{m.label}</option>{/each}
 						</select>
-						{#if retrieval_method !== 'colpali'}
+						{#if retrieval_method === 'hybrid'}
+							<div class="param" style="margin-top: 0.5rem;">
+								<span class="param-name">Visual / Keyword Balance</span>
+								<div style="display: flex; align-items: center; gap: 0.5rem;">
+									<span style="font-size: 0.7rem; color: var(--text-muted); white-space: nowrap;">Keyword</span>
+									<input type="range" bind:value={hybrid_visual_weight} min={0} max={1} step={0.05} style="flex: 1;" />
+									<span style="font-size: 0.7rem; color: var(--text-muted); white-space: nowrap;">Visual</span>
+								</div>
+								<span class="hint" style="text-align: center; display: block;">Visual {(hybrid_visual_weight * 100).toFixed(0)}% — Keyword {((1 - hybrid_visual_weight) * 100).toFixed(0)}%</span>
+							</div>
+						{/if}
+						{#if retrieval_method !== 'colpali' && retrieval_method !== 'hybrid'}
 							<div class="row" style="margin-top: 0.5rem;">
 								<div class="field">
 									<span class="param-name">Chunk Size</span>

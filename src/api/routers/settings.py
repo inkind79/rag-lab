@@ -34,6 +34,7 @@ class SettingsUpdate(BaseModel):
     text_embedding_model: Optional[str] = None
     chunk_size: Optional[int] = None
     chunk_overlap: Optional[int] = None
+    hybrid_visual_weight: Optional[float] = None
     model_params: Optional[Dict[str, Any]] = None
 
 
