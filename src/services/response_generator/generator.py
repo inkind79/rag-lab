@@ -130,21 +130,6 @@ def generate_streaming_response(query, session_id, generation_model, session_dat
             if msg.get("content")
         ]
 
-        # Inject Mem0 memories as system context (non-blocking — skipped if Mem0 unavailable)
-        # Skip for RAG mode: document-grounded answers should not be influenced by cross-session memory
-        if not is_rag_mode:
-            try:
-                from src.models.memory.mem0_service import get_relevant_memories
-                memories = get_relevant_memories(user_id, query, limit=5)
-                if memories:
-                    memory_context = "Relevant context from previous conversations:\n" + "\n".join(f"- {m}" for m in memories)
-                    conversation_history_for_model.insert(0, {"role": "system", "content": memory_context})
-                    logger.info(f"Injected {len(memories)} Mem0 memories into context")
-            except Exception as e:
-                logger.debug(f"Mem0 memory retrieval skipped: {e}")
-        else:
-            logger.info("RAG mode: skipping Mem0 memory injection (document-grounded answers only)")
-
         # Add current query if not already included
         if query and not any(msg.get('role') == 'user' and msg.get('content') == query for msg in conversation_history_for_model):
             conversation_history_for_model.append({"role": "user", "content": query})
@@ -160,6 +145,22 @@ def generate_streaming_response(query, session_id, generation_model, session_dat
             if not selected_docs:
                 logger.info("RAG mode requested but no documents selected — falling back to direct chat")
                 is_rag_mode = False
+
+        # Inject Mem0 memories as system context (non-blocking — skipped if Mem0 unavailable)
+        # Skip for RAG mode: document-grounded answers should not be influenced by cross-session memory
+        # Placed after auto-downgrade so that downgraded-to-chat conversations still get memories
+        if not is_rag_mode:
+            try:
+                from src.models.memory.mem0_service import get_relevant_memories
+                memories = get_relevant_memories(user_id, query, limit=5)
+                if memories:
+                    memory_context = "Relevant context from previous conversations:\n" + "\n".join(f"- {m}" for m in memories)
+                    conversation_history_for_model.insert(0, {"role": "system", "content": memory_context})
+                    logger.info(f"Injected {len(memories)} Mem0 memories into context")
+            except Exception as e:
+                logger.debug(f"Mem0 memory retrieval skipped: {e}")
+        else:
+            logger.info("RAG mode: skipping Mem0 memory injection (document-grounded answers only)")
 
         if is_rag_mode:
             # Send stage progression events for better UX
