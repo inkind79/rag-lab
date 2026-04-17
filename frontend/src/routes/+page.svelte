@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { messages, isStreaming, currentModel, currentModelDisplay } from '$lib/stores/chat';
+	import { messages, isStreaming, currentModel, currentModelDisplay, chatHistoryCursor } from '$lib/stores/chat';
 	import { activeSession, activeSessionId, optimizedQuery } from '$lib/stores/session';
-	import { streamChat, getSessionId, saveSettings, getAvailableModels, getSessionData } from '$lib/api/client';
+	import { streamChat, getSessionId, saveSettings, getAvailableModels, getSessionData, getChatHistoryPage } from '$lib/api/client';
 	import Markdown from '$lib/components/Markdown.svelte';
 	import ModelBadge from '$lib/components/ModelBadge.svelte';
 	import RetrievedImages from '$lib/components/RetrievedImages.svelte';
@@ -117,6 +117,46 @@
 			}
 		} catch {
 			messages.set([]);
+		}
+	}
+
+	let loadingEarlier = $state(false);
+
+	async function loadEarlier() {
+		// Walk one page backward and prepend the older messages onto the store.
+		// We preserve the user's scroll position visually by capturing the
+		// scrollHeight before the prepend and adjusting scrollTop after, so the
+		// in-view conversation doesn't jump.
+		const uuid = $activeSessionId;
+		if (!uuid || loadingEarlier || !$chatHistoryCursor.has_more) return;
+
+		loadingEarlier = true;
+		const prevScrollHeight = chatContainer?.scrollHeight ?? 0;
+		const prevScrollTop = chatContainer?.scrollTop ?? 0;
+
+		try {
+			const page = await getChatHistoryPage(uuid, 50, $chatHistoryCursor.first_index);
+			const normalized = page.messages.map((msg: any) => ({
+				...msg,
+				timestamp: typeof msg.timestamp === 'string' ? new Date(msg.timestamp).getTime() : (msg.timestamp || Date.now()),
+				images: Array.isArray(msg.images) ? msg.images : [],
+			}));
+			messages.update((current) => [...normalized, ...current]);
+			chatHistoryCursor.set({
+				first_index: page.first_index,
+				total: page.total,
+				has_more: page.has_more,
+			});
+			// Restore scroll position so the user's view doesn't jump.
+			await tick();
+			if (chatContainer) {
+				const newScrollHeight = chatContainer.scrollHeight;
+				chatContainer.scrollTop = prevScrollTop + (newScrollHeight - prevScrollHeight);
+			}
+		} catch (e) {
+			console.error('Failed to load earlier messages:', e);
+		} finally {
+			loadingEarlier = false;
 		}
 	}
 
@@ -495,6 +535,19 @@
 
 	<div class="messages-area" bind:this={chatContainer} class:hidden={$messages.length === 0}>
 
+		{#if $chatHistoryCursor.has_more}
+			<div class="load-earlier">
+				<button
+					type="button"
+					class="load-earlier-btn"
+					onclick={loadEarlier}
+					disabled={loadingEarlier}
+				>
+					{loadingEarlier ? 'Loading...' : `Load earlier messages (${$chatHistoryCursor.first_index} of ${$chatHistoryCursor.total} hidden)`}
+				</button>
+			</div>
+		{/if}
+
 		{#each $messages as msg, i}
 			<div class="message {msg.role}" class:upload={msg.type === 'document_upload'} style={msg.role === 'assistant' ? `--vendor-color: ${getVendorColor(msg.model)}` : ''}>
 				{#if msg.type === 'document_upload'}
@@ -728,6 +781,31 @@
 		max-width: 800px; width: 100%; margin: 0 auto;
 	}
 	.messages-area.hidden { display: none; }
+
+	.load-earlier {
+		display: flex; justify-content: center;
+		padding: 0.5rem 0 1rem;
+	}
+	.load-earlier-btn {
+		background: var(--bg-card, transparent);
+		color: var(--text-secondary);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 0.4rem 0.9rem;
+		font-size: 0.78rem; font-weight: 500;
+		font-family: var(--font-sans, inherit);
+		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s, color 0.15s;
+	}
+	.load-earlier-btn:hover:not(:disabled) {
+		background: var(--bg-hover);
+		color: var(--text-primary);
+		border-color: var(--text-secondary);
+	}
+	.load-earlier-btn:disabled { opacity: 0.55; cursor: progress; }
+	.load-earlier-btn:focus-visible {
+		outline: 2px solid var(--accent, #6366f1); outline-offset: 2px;
+	}
 
 	/* ── Bottom bar (when messages exist) ── */
 	.bottom-bar {

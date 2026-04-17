@@ -172,6 +172,36 @@ export async function getSessionById(uuid: string): Promise<any> {
 	return fetchJson(`/api/v1/sessions/${uuid}`);
 }
 
+export interface ChatHistoryPage {
+	messages: any[];
+	first_index: number;
+	total: number;
+	has_more: boolean;
+}
+
+/**
+ * Load a paginated slice of a session's chat history.
+ *
+ * `before` is exclusive: omit it to get the most recent `limit` messages,
+ * pass `first_index` of a previous page to walk backwards.
+ */
+export async function getChatHistoryPage(
+	uuid: string,
+	limit = 50,
+	before?: number,
+): Promise<ChatHistoryPage> {
+	const params = new URLSearchParams({ limit: String(limit) });
+	if (before !== undefined) params.set('before', String(before));
+	const resp = await fetchJson(`/api/v1/sessions/${uuid}/chat_history?${params}`);
+	const data = resp?.data || resp;
+	return {
+		messages: data?.messages || [],
+		first_index: data?.first_index ?? 0,
+		total: data?.total ?? 0,
+		has_more: !!data?.has_more,
+	};
+}
+
 export async function switchSession(uuid: string): Promise<void> {
 	// Use our JSON API endpoint — avoids the Flask /switch_session redirect
 	// which triggers a full /chat page render (208KB, 10s).
