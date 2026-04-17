@@ -95,5 +95,6 @@ QUICK_REFERENCE.md
 node_modules/
 .svelte-kit/
 data/users.db
+data/.jwt_secret
 src/data/prompt_templates/*_templates.json
 static/images/

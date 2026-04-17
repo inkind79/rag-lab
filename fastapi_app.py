@@ -71,13 +71,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — SvelteKit dev server + production
+# CORS — origins are env-driven via CORS_ORIGINS (comma-separated)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # SvelteKit dev
-        "http://localhost:8000",  # Self
-    ],
+    allow_origins=config.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-Session-UUID", "Authorization"],
@@ -113,10 +110,20 @@ from src.api.routers import documents as docs_router  # noqa: already imported
 @app.get("/document/view/{session_uuid}/{filename:path}")
 async def view_document(session_uuid: str, filename: str):
     """Serve uploaded documents for viewing (PDF, images)."""
-    file_path = os.path.join(config.UPLOAD_FOLDER, session_uuid, filename)
-    if not os.path.exists(file_path):
+    from src.api.deps import _UUID_RE
+    from src.utils.path_safety import safe_filename, safe_join, UnsafePathError
+
+    if not _UUID_RE.match(session_uuid):
+        raise HTTPException(status_code=400, detail="Invalid session UUID")
+    try:
+        clean_name = safe_filename(filename)
+        file_path = safe_join(os.path.join(config.UPLOAD_FOLDER, session_uuid), clean_name)
+    except UnsafePathError:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(file_path)
+    return FileResponse(str(file_path))
 
 # --- SPA catch-all ---
 # Serve SvelteKit build output. Must be LAST (after all API routes).
