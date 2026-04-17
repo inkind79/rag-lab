@@ -68,7 +68,20 @@ archive/
 # Runtime database and cache files
 .lancedb/
 .memory_chromadb/
+.bm25/
 static/images/*/retrieved_*.png
+
+# Secrets and key material (defensive — should never be committed)
+*.pem
+*.key
+*.p12
+*.pfx
+*.pkl
+*.pickle
+id_rsa*
+id_ed25519*
+*.crt
+secrets.json
 
 **/.claude/settings.local.json
 
