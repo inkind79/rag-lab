@@ -27,6 +27,10 @@ export interface ChatMessage {
 	modelDisplayName?: string;
 	reasoning?: string;
 	template_name?: string;
+	/** Stream interruption / server error message for an assistant turn. */
+	error?: string;
+	/** Original request, attached on stream errors so the UI can offer Retry. */
+	retryContext?: { query: string; images?: string[]; isBatch?: boolean };
 }
 
 export const messages = writable<ChatMessage[]>([]);
