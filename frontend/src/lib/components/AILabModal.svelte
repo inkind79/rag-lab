@@ -113,7 +113,7 @@
 				<div class="two-col">
 					<!-- Left: model selection -->
 					<div class="col-left">
-						<label class="field-label">Generation Model</label>
+						<span class="field-label">Generation Model</span>
 						<select bind:value={generation_model} class="model-select">
 							{#if huggingfaceModels.length > 0}
 								<optgroup label="HuggingFace (Local)">
@@ -149,7 +149,7 @@
 
 						<!-- Temperature (all providers) -->
 						<div class="param">
-							<label>Temperature</label>
+							<span class="param-label">Temperature</span>
 							<div class="slider-row">
 								<input type="range" bind:value={temperature} min={0} max={1} step={0.05} />
 								<span class="slider-val">{temperature.toFixed(2)}</span>
@@ -159,7 +159,7 @@
 
 						<!-- Max Tokens (all providers) -->
 						<div class="param">
-							<label>Max Tokens</label>
+							<span class="param-label">Max Tokens</span>
 							{#if provider === 'ollama'}
 								<input type="number" bind:value={num_predict} min={256} max={32768} step={256} />
 								<span class="param-hint">Max output tokens</span>
@@ -170,7 +170,7 @@
 
 						<!-- Top P (all providers) -->
 						<div class="param">
-							<label>Top P</label>
+							<span class="param-label">Top P</span>
 							<div class="slider-row">
 								<input type="range" bind:value={top_p} min={0} max={1} step={0.05} />
 								<span class="slider-val">{top_p.toFixed(2)}</span>
@@ -180,7 +180,7 @@
 						<!-- Top K (Ollama) -->
 						{#if provider === 'ollama'}
 							<div class="param">
-								<label>Top K</label>
+								<span class="param-label">Top K</span>
 								<input type="number" bind:value={top_k} min={1} max={100} />
 							</div>
 						{/if}
@@ -188,12 +188,12 @@
 						<!-- Ollama-specific -->
 						{#if provider === 'ollama'}
 							<div class="param">
-								<label>Context Window</label>
+								<span class="param-label">Context Window</span>
 								<input type="number" bind:value={num_ctx} min={1024} max={32768} step={1024} />
 								<span class="param-hint">Max context tokens (default 8192)</span>
 							</div>
 							<div class="param">
-								<label>Repeat Penalty</label>
+								<span class="param-label">Repeat Penalty</span>
 								<div class="slider-row">
 									<input type="range" bind:value={repeat_penalty} min={0.1} max={2.0} step={0.1} />
 									<span class="slider-val">{repeat_penalty.toFixed(1)}</span>
@@ -260,7 +260,7 @@
 	}
 
 	.param { margin-bottom: 0.6rem; }
-	.param label { font-size: 0.75rem; font-weight: 600; color: #374151; display: block; margin-bottom: 2px; }
+	.param label, .param .param-label { font-size: 0.75rem; font-weight: 600; color: #374151; display: block; margin-bottom: 2px; }
 	.param input[type='number'] {
 		width: 100%; padding: 0.35rem 0.45rem; border: 1px solid #d1d5db;
 		border-radius: 5px; font-size: 0.82rem; color: #1f2937;

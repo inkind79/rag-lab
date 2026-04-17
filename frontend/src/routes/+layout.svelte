@@ -409,8 +409,14 @@
 <ToastContainer />
 
 {#if shortcutsOpen}
-	<div class="confirm-backdrop" onclick={() => (shortcutsOpen = false)} role="dialog" tabindex="-1">
-		<div class="confirm-dialog wide" onclick={(e) => e.stopPropagation()}>
+	<div
+		class="confirm-backdrop"
+		onclick={() => (shortcutsOpen = false)}
+		onkeydown={(e) => { if (e.key === 'Escape') shortcutsOpen = false; }}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="confirm-dialog wide" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
 			<div class="modal-mini-header">
 				<strong>Keyboard Shortcuts</strong>
 				<button class="close-sm" onclick={() => (shortcutsOpen = false)}>&times;</button>
@@ -429,8 +435,14 @@
 {/if}
 
 {#if deleteConfirmId}
-	<div class="confirm-backdrop" onclick={() => (deleteConfirmId = null)} role="dialog" tabindex="-1">
-		<div class="confirm-dialog" onclick={(e) => e.stopPropagation()}>
+	<div
+		class="confirm-backdrop"
+		onclick={() => (deleteConfirmId = null)}
+		onkeydown={(e) => { if (e.key === 'Escape') deleteConfirmId = null; }}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="confirm-dialog" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
 			<p>Delete this session and all its documents?</p>
 			<div class="confirm-actions">
 				<button class="cbtn cancel" onclick={() => (deleteConfirmId = null)}>Cancel</button>
@@ -441,8 +453,14 @@
 {/if}
 
 {#if indexedFilesModal.open}
-	<div class="confirm-backdrop" onclick={() => (indexedFilesModal.open = false)} role="dialog" tabindex="-1">
-		<div class="confirm-dialog wide" onclick={(e) => e.stopPropagation()}>
+	<div
+		class="confirm-backdrop"
+		onclick={() => (indexedFilesModal.open = false)}
+		onkeydown={(e) => { if (e.key === 'Escape') indexedFilesModal.open = false; }}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="confirm-dialog wide" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
 			<div class="modal-mini-header">
 				<strong>{indexedFilesModal.sessionName}</strong> — Collection
 				<button class="close-sm" onclick={() => (indexedFilesModal.open = false)}>&times;</button>
@@ -464,8 +482,14 @@
 {/if}
 
 {#if deleteAllConfirm}
-	<div class="confirm-backdrop" onclick={() => (deleteAllConfirm = false)} role="dialog" tabindex="-1">
-		<div class="confirm-dialog" onclick={(e) => e.stopPropagation()}>
+	<div
+		class="confirm-backdrop"
+		onclick={() => (deleteAllConfirm = false)}
+		onkeydown={(e) => { if (e.key === 'Escape') deleteAllConfirm = false; }}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="confirm-dialog" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
 			<p>Delete <strong>ALL</strong> sessions and their documents? This cannot be undone.</p>
 			<div class="confirm-actions">
 				<button class="cbtn cancel" onclick={() => (deleteAllConfirm = false)}>Cancel</button>
