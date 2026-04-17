@@ -161,7 +161,7 @@
 					{/if}
 					{#if results.optimized_prompt}
 						<div class="optimized-prompt">
-							<label>Optimized Prompt:</label>
+							<span class="heading">Optimized Prompt:</span>
 							<pre>{results.optimized_prompt}</pre>
 						</div>
 					{/if}
@@ -171,16 +171,20 @@
 				<!-- Input form -->
 				<div class="feedback-form">
 					<div class="form-field">
-						<label>Expected Response:</label>
-						<textarea
-							bind:value={expectedResponse}
-							rows={4}
-							placeholder="Describe the ideal response to this query. This will be used as ground truth for evaluation."
-						></textarea>
+						<label>
+							Expected Response:
+							<textarea
+								bind:value={expectedResponse}
+								rows={4}
+								placeholder="Describe the ideal response to this query. This will be used as ground truth for evaluation."
+							></textarea>
+						</label>
 					</div>
 					<div class="form-field">
-						<label>Optimization Iterations:</label>
-						<input type="number" bind:value={iterationCount} min={1} max={10} />
+						<label>
+							Optimization Iterations:
+							<input type="number" bind:value={iterationCount} min={1} max={10} />
+						</label>
 					</div>
 					{#if relevantImages.length > 0}
 						<div class="relevance-note">
@@ -284,7 +288,7 @@
 	}
 
 	.optimized-prompt { margin-top: 0.5rem; }
-	.optimized-prompt label { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); }
+	.optimized-prompt label, .optimized-prompt .heading { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); display: block; }
 	.optimized-prompt pre {
 		font-size: 0.75rem; background: var(--bg-surface); border: 1px solid var(--border);
 		border-radius: 6px; padding: 0.5rem; white-space: pre-wrap;

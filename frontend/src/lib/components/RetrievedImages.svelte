@@ -140,7 +140,14 @@
 								{#each group.images as img}
 									<div class="image-card">
 										<div class="image-frame">
-											<img src={getImageUrl(img)} alt="Retrieved page" loading="lazy" onclick={() => openZoom(getImageUrl(img))} onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} style="cursor: zoom-in;" />
+											<button
+												type="button"
+												class="image-zoom-btn"
+												onclick={() => openZoom(getImageUrl(img))}
+												aria-label="Zoom in on retrieved page"
+											>
+												<img src={getImageUrl(img)} alt="Retrieved page" loading="lazy" onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+											</button>
 											<div class="sim-hover-bar" style="background: linear-gradient(90deg, {getScoreColor(img.score)} {Math.round(img.score * 100)}%, transparent {Math.round(img.score * 100)}%)"></div>
 											<div class="score-overlay" style="background-color: {getScoreColor(img.score)}">{img.score.toFixed(3)}</div>
 										</div>
@@ -154,14 +161,19 @@
 					{#each imageItems as img}
 						<div class="image-card">
 							<div class="image-frame">
-								<img
-									src={getImageUrl(img)}
-									alt="Retrieved page"
-									loading="lazy"
+								<button
+									type="button"
+									class="image-zoom-btn"
 									onclick={() => openZoom(getImageUrl(img))}
-									onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-									style="cursor: zoom-in;"
-								/>
+									aria-label="Zoom in on retrieved page"
+								>
+									<img
+										src={getImageUrl(img)}
+										alt="Retrieved page"
+										loading="lazy"
+										onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+									/>
+								</button>
 								<div class="sim-hover-bar" style="background: linear-gradient(90deg, {getScoreColor(img.score)} {Math.round(img.score * 100)}%, transparent {Math.round(img.score * 100)}%)"></div>
 								<div class="score-overlay" style="background-color: {getScoreColor(img.score)}">
 									{img.score.toFixed(3)}
@@ -327,6 +339,17 @@
 	.image-frame img {
 		display: block; width: 100%; height: auto;
 		max-height: 196px; object-fit: cover; object-position: top;
+	}
+
+	/* Wrap the image in a real <button> so keyboard users (Enter/Space) can
+	   trigger the zoom action just like mouse users. Styled to be visually
+	   identical to the bare image. */
+	.image-zoom-btn {
+		display: block; width: 100%; padding: 0; margin: 0;
+		background: none; border: none; cursor: zoom-in;
+	}
+	.image-zoom-btn:focus-visible {
+		outline: 2px solid var(--accent, #6366f1); outline-offset: 2px;
 	}
 
 	.sim-hover-bar {

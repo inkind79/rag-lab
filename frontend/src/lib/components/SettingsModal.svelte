@@ -250,7 +250,7 @@
 				<!-- ═══ MODEL TAB ═══ -->
 				{#if activeTab === 'model'}
 					<div class="group">
-						<label class="label">Generation Model</label>
+						<span class="label">Generation Model</span>
 						<select bind:value={generation_model} class="full">
 							{#if huggingfaceModels.length > 0}
 								<optgroup label="HuggingFace (Local)">
@@ -271,7 +271,7 @@
 					</div>
 
 					<div class="group">
-						<label class="label">Model Parameters</label>
+						<span class="label">Model Parameters</span>
 
 						<div class="param">
 							<span class="param-name">Temperature</span>
@@ -326,7 +326,7 @@
 				<!-- ═══ RETRIEVAL TAB ═══ -->
 				{:else if activeTab === 'retrieval'}
 					<div class="group">
-						<label class="label">Embedding Model</label>
+						<span class="label">Embedding Model</span>
 						<select bind:value={indexer_model} class="full">
 							{#each embeddingModels as m}<option value={m.value}>{m.label}</option>{/each}
 						</select>
@@ -334,7 +334,7 @@
 					</div>
 
 					<div class="group">
-						<label class="label">Retrieval Method</label>
+						<span class="label">Retrieval Method</span>
 						<select bind:value={retrieval_method} class="full">
 							{#each methods as m}<option value={m.value}>{m.label}</option>{/each}
 						</select>
@@ -364,7 +364,7 @@
 					</div>
 
 					<div class="group">
-						<label class="label">Search Parameters</label>
+						<span class="label">Search Parameters</span>
 						<div class="row">
 							<div class="field">
 								<span class="param-name">Max Results</span>
@@ -388,7 +388,7 @@
 					</div>
 
 					<div class="group">
-						<label class="label">Adaptive Score-Slope</label>
+						<span class="label">Adaptive Score-Slope</span>
 						<label class="toggle">
 							<input type="checkbox" bind:checked={use_score_slope} />
 							<span>Enable adaptive analysis</span>
@@ -461,7 +461,7 @@
 				<!-- ═══ ADVANCED TAB ═══ -->
 				{:else}
 					<div class="group">
-						<label class="label">Ollama Cloud</label>
+						<span class="label">Ollama Cloud</span>
 						<span class="hint">Connect to Ollama's cloud models with your API key from <a href="https://ollama.com/settings/keys" target="_blank" rel="noopener">ollama.com/settings/keys</a></span>
 						<div class="key-row">
 							<input type="password" bind:value={ollamaApiKey}
@@ -474,7 +474,7 @@
 					</div>
 
 					<div class="group">
-						<label class="label">OCR Text Extraction</label>
+						<span class="label">OCR Text Extraction</span>
 						<label class="toggle">
 							<input type="checkbox" bind:checked={use_ocr} />
 							<span>Enable OCR</span>
