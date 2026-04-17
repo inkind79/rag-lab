@@ -4,7 +4,7 @@ Auth Router — registration, login, logout, check
 Uses FastAPI-Users for user management with a custom username-based login.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -39,30 +39,48 @@ class LoginRequest(BaseModel):
     password: str
 
 
+_INVALID_CREDENTIALS = "Invalid credentials"
+
+# Pre-computed hash of a random string. We verify against this when the user
+# isn't found so the timing of "user missing" matches "wrong password" — both
+# pay one bcrypt verification round.
+_DUMMY_HASH: str | None = None
+
+
+def _get_dummy_hash(manager: 'UserManager') -> str:
+    global _DUMMY_HASH
+    if _DUMMY_HASH is None:
+        import secrets as _secrets
+        _DUMMY_HASH = manager.password_helper.hash(_secrets.token_hex(16))
+    return _DUMMY_HASH
+
+
 @router.post("/auth/login")
 async def login_by_username(
+    request: Request,
     body: LoginRequest,
     response: Response,
     session=Depends(get_async_session),
 ):
-    """Login using username + password (the primary login method for RAG Lab)."""
-    from src.api.users import get_user_manager, get_user_db
-    from fastapi_users.exceptions import UserNotExists
+    """Login using username + password (the primary login method for RAG Lab).
 
-    # Look up user by username
-    result = await session.execute(select(User).where(User.username == body.username))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    # Verify password using FastAPI-Users password helper
+    Always pays one bcrypt verification round and always returns the same
+    "Invalid credentials" message regardless of failure mode (missing user,
+    wrong password, inactive account) so the endpoint isn't an account
+    enumeration oracle.
+    """
     user_db = SQLAlchemyUserDatabase(session, User)
     manager = UserManager(user_db)
-    verified, _updated_hash = manager.password_helper.verify_and_update(body.password, user.hashed_password)
-    if not verified:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not user.is_active:
-        raise HTTPException(status_code=401, detail="Account is inactive")
+
+    result = await session.execute(select(User).where(User.username == body.username))
+    user = result.scalar_one_or_none()
+
+    # Verify against the real hash if we have one, else against the dummy hash.
+    target_hash = user.hashed_password if user else _get_dummy_hash(manager)
+    verified, _updated_hash = manager.password_helper.verify_and_update(body.password, target_hash)
+
+    if not user or not verified or not user.is_active:
+        raise HTTPException(status_code=401, detail=_INVALID_CREDENTIALS)
 
     # Generate JWT token and set cookie
     strategy = get_jwt_strategy()
