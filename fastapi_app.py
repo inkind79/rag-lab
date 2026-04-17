@@ -26,6 +26,11 @@ from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+# Initialize Sentry before app construction so unhandled errors during
+# startup (router import, lifespan) get reported. No-op when SENTRY_DSN unset.
+from src.api.observability import init_sentry
+init_sentry()
+
 from src.api import config
 from src.api.rate_limit import (
     PathRateLimitMiddleware,

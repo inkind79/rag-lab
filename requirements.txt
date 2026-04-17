@@ -47,6 +47,9 @@ hf_transfer
 backoff>=2.2.1
 python-json-logger>=2.0  # optional: enables LOG_FORMAT=json structured logs
 
+# Optional observability — only invoked when SENTRY_DSN / LOG_FORMAT are set.
+sentry-sdk[fastapi]>=2.0  # opt-in via SENTRY_DSN env var
+
 # GPU acceleration (Linux only)
 flash-attn; sys_platform != 'darwin'
 faiss-gpu; sys_platform != 'darwin' and platform_machine != 'arm64'
