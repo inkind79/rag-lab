@@ -32,7 +32,7 @@ from src.api.observability import init_sentry
 init_sentry()
 
 from src.api import config
-from src.api.static_cache import StaticAssetCacheMiddleware
+from src.api.security_headers import SecurityHeadersMiddleware
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -95,9 +95,9 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-Session-UUID", "Authorization"],
 )
 
-# Cache-Control headers for static assets (long TTL for hashed bundles,
-# short TTL for per-session thumbnails, no-store for API JSON).
-app.add_middleware(StaticAssetCacheMiddleware)
+# Security headers: MIME sniffing / clickjacking / referrer / permissions always
+# on, CSP opt-in via CSP_ENABLE=true.
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Standardized error responses
 @app.exception_handler(HTTPException)
