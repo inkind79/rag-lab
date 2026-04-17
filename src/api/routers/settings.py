@@ -35,6 +35,10 @@ class SettingsUpdate(BaseModel):
     chunk_size: Optional[int] = None
     chunk_overlap: Optional[int] = None
     hybrid_visual_weight: Optional[float] = None
+    use_hyde: Optional[bool] = None
+    hyde_model: Optional[str] = None
+    use_llm_rerank: Optional[bool] = None
+    llm_rerank_model: Optional[str] = None
     model_params: Optional[Dict[str, Any]] = None
 
 
