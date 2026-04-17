@@ -14,7 +14,7 @@ from typing import Dict # Import Dict for type hinting
 import shutil
 import time # Imported for LanceDB deletion retry
 import math # For checking NaN and Inf values
-from src.utils.file_lock import safe_json_read, safe_json_write
+from src.utils.file_lock import file_lock, safe_json_read, safe_json_write
 
 logger = logging.getLogger(__name__)
 
@@ -235,16 +235,14 @@ def create_session(session_folder, user_id, session_name=None):
     # 6. Ensure session name is set correctly (might have been defaulted above)
     session_data['session_name'] = session_name
 
-    # Save session data using the new UUID as filename
+    # Save session data using the new UUID as filename (atomic write + fcntl).
+    os.makedirs(session_folder, exist_ok=True)
     session_file = os.path.join(session_folder, f"{new_session_uuid}.json")
-    try:
-        with open(session_file, 'w') as f:
-            json.dump(session_data, f, indent=2)
-        logger.info(f"Created new session {new_session_uuid} for user {user_id} - Name: {session_name}")
-        return new_session_uuid, session_data
-    except Exception as e:
-        logger.error(f"Error creating session file {session_file}: {e}")
+    if not safe_json_write(session_file, session_data):
+        logger.error(f"Error creating session file {session_file}")
         return None, None
+    logger.info(f"Created new session {new_session_uuid} for user {user_id} - Name: {session_name}")
+    return new_session_uuid, session_data
 
 
 def load_session(session_folder, session_uuid):
@@ -335,20 +333,21 @@ def save_session(session_folder, session_uuid, session_data):
         }
         logger.info(f"[SAVE] Session UUID: {session_uuid} - Saving Data Summary: {json.dumps(log_data_summary)}")
 
-        # Check if the file exists and is valid JSON before overwriting
+        # If the existing file is corrupt JSON, copy it aside before we overwrite.
+        # The read + backup both happen inside the same file lock so concurrent
+        # writers don't race in between.
         if os.path.exists(session_file):
-            try:
-                with open(session_file, 'r') as f:
-                    json.load(f)  # Just try to load it to check if it's valid JSON
-            except json.JSONDecodeError:
-                # If the file exists but is invalid JSON, make a backup before overwriting
-                timestamp = int(time.time())
-                backup_file = f"{session_file}.bak.{timestamp}"
+            with file_lock(session_file):
                 try:
-                    shutil.copy2(session_file, backup_file)
-                    logger.warning(f"Created backup of invalid JSON file: {backup_file}")
-                except Exception as e_backup:
-                    logger.error(f"Failed to create backup of invalid JSON file: {e_backup}")
+                    with open(session_file, 'r') as f:
+                        json.load(f)
+                except json.JSONDecodeError:
+                    backup_file = f"{session_file}.bak.{int(time.time())}"
+                    try:
+                        shutil.copy2(session_file, backup_file)
+                        logger.warning(f"Created backup of invalid JSON file: {backup_file}")
+                    except Exception as e_backup:
+                        logger.error(f"Failed to create backup of invalid JSON file: {e_backup}")
 
         # Use safe JSON write with file locking
         success = safe_json_write(session_file, session_data)
@@ -584,23 +583,22 @@ def get_all_sessions(session_folder, user_id):
     for filename in all_files:
         session_uuid = filename[:-5]
         file_path = os.path.join(session_folder, filename)
+        # Read under the same file lock writers use, so we don't see a half-
+        # written tmp file or a file mid-rename.
+        data = safe_json_read(file_path)
+        if data is None:
+            # safe_json_read logs the error; just skip so one bad file doesn't
+            # break the whole listing.
+            continue
         try:
-            with open(file_path, 'r') as f:
-                data = json.load(f)
-            # Check if the session belongs to the requested user
             if data.get('user_id') == user_id:
                 name = data.get('session_name', f'Session {session_uuid[:8]}')
-                # Use stored creation timestamp if available, otherwise fall back to file creation time
-                # This ensures newly created sessions appear first
                 created_at = data.get('created_at')
                 if created_at is None:
-                    # For older sessions without created_at, use file creation time
                     created_at = os.path.getctime(file_path)
                 user_sessions.append({'id': session_uuid, 'name': name, 'created_at': created_at})
-        except json.JSONDecodeError:
-             logger.error(f"Skipping invalid JSON file during session list: {filename}")
         except Exception as e:
-            logger.error(f"Error loading or checking ownership for session file {filename}: {e}")
+            logger.error(f"Error checking ownership for session file {filename}: {e}")
 
     # Sort sessions by creation time (newest first)
     # This ensures newly created sessions appear at the top
@@ -678,13 +676,17 @@ def delete_session_data(session_uuid, app_config, rag_models=None):
             except Exception as e: # Catch any other unexpected error during load
                 logger.error(f"Unexpected error loading session file {session_uuid} to get user_id before deletion: {e}")
 
-            # Delete session file regardless of whether we got user_id
+            # Delete session file regardless of whether we got user_id.
+            # Acquire the file lock first so we don't race with an in-flight
+            # save_session() that would leave the file re-created after delete.
             try:
-                os.remove(session_file)
+                with file_lock(session_file):
+                    if os.path.exists(session_file):
+                        os.remove(session_file)
                 logger.info(f"Deleted session file: {session_file}")
             except OSError as e_os:
-                 logger.error(f"Error removing session file {session_file}: {e_os}")
-                 # Continue with other cleanup even if file removal fails
+                logger.error(f"Error removing session file {session_file}: {e_os}")
+                # Continue with other cleanup even if file removal fails
 
         # Delete associated folders using session_uuid
         session_upload_folder = os.path.join(app_config['UPLOAD_FOLDER'], session_uuid)

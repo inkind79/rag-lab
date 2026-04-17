@@ -104,26 +104,53 @@ _registry_lock = threading.Lock()
 def file_lock(filepath, timeout=10):
     """
     Context manager for file locking.
-    
+
     Usage:
         with file_lock('/path/to/file.json'):
             # Read or write file safely
             pass
+
+    If a stale ``<filepath>.lock`` from a previously crashed writer blocks
+    this process past the timeout, the stale file is removed and acquisition
+    is retried once. Stale is determined by the lock file being older than
+    the timeout AND the owning process no longer holding an fcntl lock.
     """
+    filepath = os.fspath(filepath)
     with _registry_lock:
         if filepath not in _lock_registry:
             _lock_registry[filepath] = threading.Lock()
         process_lock = _lock_registry[filepath]
-    
-    # First acquire process-local lock
+
     with process_lock:
-        # Then acquire file system lock
         lock = FileLock(filepath, timeout)
         try:
-            lock.acquire()
+            try:
+                lock.acquire()
+            except TimeoutError:
+                _try_clear_stale_lock(lock.lockfile, timeout)
+                lock.acquire()
             yield
         finally:
             lock.release()
+
+
+def _try_clear_stale_lock(lockfile: str, age_threshold: float) -> None:
+    """Remove a stale lockfile left behind by a crashed writer."""
+    try:
+        st = os.stat(lockfile)
+    except OSError:
+        return
+    if time.time() - st.st_mtime < age_threshold:
+        return
+    try:
+        with open(lockfile, 'r') as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            # If we got here, no one holds the fcntl lock — safe to delete.
+            os.remove(lockfile)
+            logger.warning(f"Removed stale lock file: {lockfile}")
+    except (IOError, OSError):
+        # Another process holds the lock, or the file vanished. Don't touch it.
+        return
 
 
 def safe_json_read(filepath, default=None):
