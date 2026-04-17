@@ -51,3 +51,28 @@ def set_ollama_api_key(key: str):
     os.environ['OLLAMA_API_KEY'] = key
     if key:
         register_secret(key)
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
+def get_request_timeout() -> Tuple[float, float]:
+    """Return ``(connect_timeout, read_timeout)`` for requests calls."""
+    return (
+        _env_float('OLLAMA_CONNECT_TIMEOUT', 10.0),
+        _env_float('OLLAMA_READ_TIMEOUT', 1800.0),
+    )
+
+
+def get_ollama_client() -> ollama.Client:
+    """Construct an ``ollama.Client`` with the configured read timeout.
+
+    The ollama SDK takes a single ``timeout`` value. Use the longer half
+    of our (connect, read) tuple.
+    """
+    _, read_timeout = get_request_timeout()
+    return ollama.Client(timeout=read_timeout)
