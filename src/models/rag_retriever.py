@@ -174,8 +174,9 @@ class RAGRetriever(BaseRetriever):
             prompt = f"{instruction}\n\n{conversation_context}\n\nAmbiguous query: {query}\n\nExpanded query:"
 
             try:
+                from src.utils.ollama_client import get_ollama_client
                 model_to_use = 'llama3.2-vision' # Or choose another lightweight default
-                response = ollama.chat(
+                response = get_ollama_client().chat(
                     model=model_to_use, messages=[{"role": "user", "content": prompt}],
                     options={"temperature": 0.1}
                 )
