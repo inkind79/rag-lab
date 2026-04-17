@@ -24,6 +24,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+# Initialize Sentry before app construction so unhandled errors during
+# startup (router import, lifespan) get reported. No-op when SENTRY_DSN unset.
+from src.api.observability import init_sentry
+init_sentry()
+
 from src.api import config
 from src.utils.logger import get_logger
 
