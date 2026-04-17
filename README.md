@@ -16,15 +16,37 @@ RAG Lab uses **ColPali visual embeddings** to understand document layout and con
 
 ## Features
 
+### RAG & retrieval
 - **Visual RAG** — ColPali embeddings capture page layout, tables, and figures natively without text extraction. Optional OCR mode extracts text from retrieved pages for LLMs that work better with text input.
 - **Hybrid retrieval** — Combines ColPali visual search with BM25 keyword search for the best of both worlds. Visual embeddings find charts and layouts; keyword matching anchors on specific terms. Matching text snippets appear as expandable citations below each retrieved page.
-- **Any Ollama model** — Works with any local model, plus [Ollama Cloud](https://docs.ollama.com/cloud) models via API key (Settings > Advanced). Vision, text, and reasoning models supported.
+- **LLM reranking** *(opt-in)* — Second-stage relevance scoring of the top-K retrieved pages by a small LLM. Improves precision for ambiguous queries. Toggle in Settings → Retrieval.
+- **HyDE query expansion** *(opt-in)* — Generates a hypothetical answer passage and retrieves against it, bridging the lexical gap between questions and documents. Toggle in Settings → Retrieval.
+- **Adaptive retrieval** — Score-slope analysis dynamically adjusts how many pages are retrieved per query.
 - **Batch processing** — Process multiple documents with per-document streaming responses.
 - **Full-document summarization** — Generic queries ("summarize") automatically process all pages in sequential chunks.
+
+### LLM & UX
+- **Any Ollama model** — Works with any local model, plus [Ollama Cloud](https://docs.ollama.com/cloud) models via API key (Settings → Advanced). Vision, text, and reasoning models supported.
 - **Prompt templates** — Create custom extraction templates (e.g., K-1 line item extractor) for structured data output.
 - **Conversation memory** — Mem0 automatically extracts and recalls context across chat sessions (disabled during RAG to keep answers document-grounded).
-- **Multi-session** — Create, switch, and manage independent analysis sessions.
-- **Adaptive retrieval** — Score-slope analysis dynamically adjusts how many pages are retrieved per query.
+- **Multi-session** — Create, switch, and manage independent analysis sessions. Chat history is paginated (50 messages at a time) with a *Load earlier* pill for long conversations.
+- **Stream retry** — If an LLM stream is interrupted, the partial response stays visible and a one-click Retry button reruns the same request.
+- **Dark mode** — Theme toggle persists via localStorage; respects `prefers-color-scheme` on first load.
+- **Keyboard shortcuts** — `?` opens the overlay. `Esc` closes modals. `Ctrl+N` new session, `Ctrl+,` settings, `Ctrl+B` sidebar.
+
+### Security & observability
+Defaults are safe; most integrations are opt-in so a local install ships nothing externally.
+
+- **Auth** — FastAPI-Users with username + argon2, JWT cookie (`SameSite=lax`, `HttpOnly`). Password policy: 8–128 chars, one letter + one digit. Login is constant-time to defeat account enumeration.
+- **Rate limiting** — Per-IP limits on `/auth/login`, `/auth/register`, and `/documents/upload` (env-overridable).
+- **CSRF protection** — Origin-header validation on cookie-authenticated state-changing requests.
+- **Security headers** — `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` always on. Content-Security-Policy opt-in via `CSP_ENABLE=true`.
+- **Path traversal + upload guards** — Filenames validated against an extension allowlist, resolved paths must stay within the session's upload dir, size-capped at `MAX_UPLOAD_SIZE`.
+- **No pickle** — Caches use numpy/JSON; inter-process IPC uses `torch.save(weights_only=True)` + base64-in-JSON. Pickle deserialization is an RCE vector and this project refuses to rely on it.
+- **Log redaction** — `JWT_SECRET`, `OLLAMA_API_KEY`, `Authorization: Bearer …`, `hf_…`, `sk-…` are scrubbed from every log line before it reaches a handler.
+- **Structured logs** *(opt-in)* — `LOG_FORMAT=json` flips console + file output to one JSON record per line for Loki/Elastic/Datadog.
+- **Error tracking** *(opt-in)* — `SENTRY_DSN` activates [Sentry](https://sentry.io) on both backend (`sentry-sdk[fastapi]`) and frontend (`@sentry/sveltekit`).
+- **Metrics** — Prometheus scrape at `/metrics` (admin-only) with HTTP volume + latency, cache hit rates, LLM inference + retrieval durations.
 
 ## Quick Start
 
@@ -81,7 +103,7 @@ uvicorn fastapi_app:app --host 127.0.0.1 --port 8000
 cd frontend && npm run dev
 ```
 
-Open **http://localhost:5173** — create an account at `/register`, then sign in.
+Open **http://localhost:5173** — follow the "Create one" link on the login page to register, then sign in.
 
 ## Architecture
 
@@ -121,6 +143,35 @@ rag-lab/
 - **RAM**: 16GB+
 - **Storage**: 20GB+ (models + dependencies)
 - **OS**: Linux / WSL2 (requires NVIDIA CUDA support)
+
+## Development
+
+```bash
+# Run tests (CI-minimal install — no torch/colpali/lancedb needed)
+pip install -r requirements-test.txt
+pytest                                # ~5s full suite
+
+# Lint
+ruff check .
+cd frontend && npm run check          # svelte-check
+
+# Regenerate TS types after changing a Pydantic request/response model
+python scripts/gen_types.py
+
+# Benchmark retrieval against a golden set
+python -m src.eval.cli --golden tests/fixtures/eval/sample_golden_set.json
+
+# Browser E2E (requires backend + Vite running)
+cd frontend && npm run test:e2e       # Playwright smoke suite
+```
+
+Continuous integration runs test / lint / security (gitleaks + bandit) on every PR — see `.github/workflows/`.
+
+## Further reading
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — subsystem-by-subsystem tour (auth, sessions, retrieval pipeline, observability) with file pointers.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — dev setup, security expectations for contributors.
+- **[.env.example](.env.example)** — every env var grouped by concern.
 
 ## Contributing
 

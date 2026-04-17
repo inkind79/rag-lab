@@ -87,15 +87,105 @@ class RAGRetriever(BaseRetriever):
         """
         Expand a user query by considering conversation history to resolve references.
 
+        When the session has ``use_hyde=True``, additionally runs HyDE expansion
+        (generate a hypothetical answer, concatenate with the query) over the
+        result so retrieval matches against both the question and what an
+        answer would look like.
+
         Args:
             query: The original user query
             chat_history: List of previous messages in the conversation
             session_id: The current session ID
 
         Returns:
-            Expanded query with resolved references
+            Expanded query with resolved references (and optional HyDE passage).
         """
-        return self._expand_query_with_context(query, chat_history, session_id)
+        context_expanded = self._expand_query_with_context(query, chat_history, session_id)
+        return self._maybe_apply_hyde_expansion(context_expanded, session_id)
+
+    # ── Phase 5 integration helpers ──────────────────────────────────────────
+
+    def _make_llm_callable(self, model_name: str):
+        """Return a prompt-string → response-string callable using Ollama.
+
+        Used by the reranker and HyDE expander, both of which are wired for
+        any LLM via the ``Callable[[str], str]`` contract.
+        """
+        # Strip RAG Lab's UI-layer 'ollama-' prefix so the actual Ollama
+        # client sees the bare model tag.
+        if model_name.startswith('ollama-'):
+            model_name = model_name[len('ollama-'):]
+
+        def _fn(prompt: str) -> str:
+            response = ollama.chat(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0.2},
+            )
+            return response['message']['content'] or ''
+        return _fn
+
+    def _maybe_apply_hyde_expansion(self, query: str, session_id: str) -> str:
+        """If session.use_hyde is set, run HyDE and return its output. Else passthrough."""
+        try:
+            from src.services.session_manager.manager import load_session
+            session_data = load_session('sessions', session_id) or {}
+        except Exception:
+            return query
+
+        if not session_data.get('use_hyde'):
+            return query
+
+        from src.models.query_expansion import HyDEExpander
+
+        model = session_data.get('hyde_model') or session_data.get('generation_model') \
+            or 'llama3.2-vision'
+        try:
+            expanded = HyDEExpander(self._make_llm_callable(model)).expand(query)
+            result = expanded[0] if expanded else query
+            logger.info(f"HyDE expansion used ({model}): '{query[:40]}...' → {len(result)} chars")
+            return result
+        except Exception as e:
+            logger.warning(f"HyDE expansion failed, using original query: {e}")
+            return query
+
+    def _maybe_rerank_results(self, query: str, results, session_data) -> list:
+        """If session.use_llm_rerank is set, LLM-rerank ``results`` and return
+        them reordered. Otherwise return ``results`` unchanged.
+
+        Preserves the original dict shape each result came in with — we
+        unwrap the RerankedCandidate objects so callers downstream don't
+        need to know reranking happened.
+        """
+        if not results:
+            return results
+        if not (session_data or {}).get('use_llm_rerank'):
+            return results
+
+        from src.models.reranker import LLMReranker, RerankerConfig
+
+        model = (session_data.get('llm_rerank_model')
+                 or session_data.get('generation_model')
+                 or 'llama3.2-vision')
+
+        # Retrieval results can have their text under a few different keys
+        # depending on the retriever (ColPali: 'text'; OCR: 'ocr_text').
+        # The reranker's text_field points at 'text' by default and falls
+        # back to metadata.text; we stick with that.
+        try:
+            reranker = LLMReranker(
+                self._make_llm_callable(model),
+                RerankerConfig(batch_size=10, max_passage_chars=1200),
+            )
+            reranked = reranker.rerank(query, results)
+            logger.info(
+                f"LLM rerank ({model}) reordered {len(results)} results; "
+                f"top score {reranked[0].score if reranked else 'n/a'}"
+            )
+            return [rc.doc for rc in reranked]
+        except Exception as e:
+            logger.warning(f"LLM rerank failed, keeping original order: {e}")
+            return results
 
     def _expand_query_with_context(self, query: str, chat_history: List[Dict[str, Any]], session_id: str) -> str:
         """
@@ -174,8 +264,9 @@ class RAGRetriever(BaseRetriever):
             prompt = f"{instruction}\n\n{conversation_context}\n\nAmbiguous query: {query}\n\nExpanded query:"
 
             try:
+                from src.utils.ollama_client import get_ollama_client
                 model_to_use = 'llama3.2-vision' # Or choose another lightweight default
-                response = ollama.chat(
+                response = get_ollama_client().chat(
                     model=model_to_use, messages=[{"role": "user", "content": prompt}],
                     options={"temperature": 0.1}
                 )
@@ -729,7 +820,7 @@ class RAGRetriever(BaseRetriever):
                     except Exception as cache_error:
                         logger.warning(f"Error caching search results: {cache_error}")
 
-                    return budget_filtered_results
+                    return self._maybe_rerank_results(query, budget_filtered_results, session_data)
                 else:
                     # If score-slope is disabled, limit to the user's retrieval count setting
                     logger.info(f"Score-slope analysis disabled - limiting to user's retrieval count setting")
@@ -778,7 +869,7 @@ class RAGRetriever(BaseRetriever):
                     # Save updated session data
                     save_session('sessions', session_id, session_data)
 
-                    return budget_filtered_results
+                    return self._maybe_rerank_results(query, budget_filtered_results, session_data)
 
             # If LanceDB returned no results, log a warning
             if not retrieved_results_list:
@@ -1034,7 +1125,7 @@ class RAGRetriever(BaseRetriever):
                         return (budget_filtered_results, None, combined_analysis)
                     else:
                         # For regular queries, just return the results
-                        return budget_filtered_results
+                        return self._maybe_rerank_results(query, budget_filtered_results, session_data)
                 else:
                     # If score-slope is disabled, limit to the user's retrieval count setting
                     logger.info(f"Score-slope analysis disabled - limiting to user's retrieval count setting")
@@ -1115,7 +1206,7 @@ class RAGRetriever(BaseRetriever):
                         return (budget_filtered_results, None, combined_analysis)
                     else:
                         # For regular queries, just return the results
-                        return budget_filtered_results
+                        return self._maybe_rerank_results(query, budget_filtered_results, session_data)
             else:
                 logger.info(f"Total {len(retrieved_results_list)} documents retrieved without meaningful scores.")
 
@@ -1187,7 +1278,7 @@ class RAGRetriever(BaseRetriever):
                     return (budget_filtered_results, None, combined_analysis)
                 else:
                     # For regular queries, just return the results
-                    return budget_filtered_results
+                    return self._maybe_rerank_results(query, budget_filtered_results, session_data)
 
         except Exception as e:
             logger.error(f"Error retrieving documents: {e}", exc_info=True)

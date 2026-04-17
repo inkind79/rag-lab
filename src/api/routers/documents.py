@@ -10,13 +10,15 @@ DELETE /api/v1/documents
 
 import os
 from typing import List
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Request
 from pydantic import BaseModel
 
 from src.api.deps import get_session_id, get_session_data, get_rag_models
 from src.api.deps import get_current_user
+from src.api.rate_limit import UPLOAD_LIMIT, limiter
 from src.api import config
 from src.utils.logger import get_logger
+from src.utils.path_safety import safe_filename, safe_join, UnsafePathError
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -50,7 +52,9 @@ async def get_documents(session_uuid: str, user_id: str = Depends(get_current_us
 
 
 @router.post("/documents/upload")
+@limiter.limit(UPLOAD_LIMIT)
 async def upload_documents(
+    request: Request,
     files: List[UploadFile] = File(...),
     session_id: str = Depends(get_session_id),
     session_data: dict = Depends(get_session_data),
@@ -64,16 +68,28 @@ async def upload_documents(
     upload_folder = os.path.join(config.UPLOAD_FOLDER, session_id)
     os.makedirs(upload_folder, exist_ok=True)
 
-    # Save uploaded files to disk first (FastAPI UploadFile → disk)
+    # Save uploaded files to disk first (FastAPI UploadFile → disk).
+    # Filenames and resolved paths are validated to prevent path traversal.
     saved_werkzeug_files = []
+    total_bytes = 0
     for upload_file in files:
         if not upload_file.filename:
             continue
-        file_path = os.path.join(upload_folder, upload_file.filename)
+        try:
+            clean_name = safe_filename(upload_file.filename)
+            file_path = safe_join(upload_folder, clean_name)
+        except UnsafePathError as exc:
+            logger.warning(f"Rejected upload {upload_file.filename!r}: {exc}")
+            raise HTTPException(status_code=400, detail=f"Invalid filename: {upload_file.filename!r}")
+
         content = await upload_file.read()
+        total_bytes += len(content)
+        if total_bytes > config.MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail="Upload exceeds size limit")
+
         with open(file_path, 'wb') as f:
             f.write(content)
-        saved_werkzeug_files.append(upload_file.filename)
+        saved_werkzeug_files.append(clean_name)
 
     if not saved_werkzeug_files:
         raise HTTPException(status_code=400, detail="No valid files uploaded")
@@ -180,10 +196,15 @@ async def delete_documents(
     deleted = []
 
     for filename in body.filenames:
-        file_path = os.path.join(upload_folder, filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            deleted.append(filename)
+        try:
+            clean_name = safe_filename(filename)
+            file_path = safe_join(upload_folder, clean_name)
+        except UnsafePathError as exc:
+            logger.warning(f"Rejected delete {filename!r}: {exc}")
+            continue
+        if file_path.exists():
+            file_path.unlink()
+            deleted.append(clean_name)
 
     # Remove from indexed_files and selected_docs
     indexed_files = session_data.get('indexed_files', [])

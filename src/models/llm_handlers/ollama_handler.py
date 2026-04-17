@@ -420,11 +420,11 @@ class OllamaHandler(BaseLLMHandler):
 
         try:
             import requests
-            from src.utils.ollama_client import get_ollama_url, get_ollama_headers
+            from src.utils.ollama_client import get_ollama_url, get_ollama_headers, get_request_timeout
             _model = payload.get("model", "")
             _url = f"{get_ollama_url(_model)}/api/chat"
             _headers = get_ollama_headers(_model)
-            response = requests.post(_url, json=payload, headers=_headers, stream=True, timeout=1800)
+            response = requests.post(_url, json=payload, headers=_headers, stream=True, timeout=get_request_timeout())
 
             if response.status_code == 200:
                 buffer = ""
@@ -644,10 +644,10 @@ class OllamaHandler(BaseLLMHandler):
 
         try:
             logger.info(f"Making raw API call to Ollama for {self.api_model_name} with thinking mode")
-            from src.utils.ollama_client import get_ollama_url, get_ollama_headers
+            from src.utils.ollama_client import get_ollama_url, get_ollama_headers, get_request_timeout
             _url = f"{get_ollama_url(self.api_model_name)}/api/chat"
             _headers = get_ollama_headers(self.api_model_name)
-            response = requests.post(_url, json=payload, headers=_headers, stream=True)
+            response = requests.post(_url, json=payload, headers=_headers, stream=True, timeout=get_request_timeout())
 
             if response.status_code == 200:
                 full_response = ""
@@ -869,7 +869,8 @@ class OllamaHandler(BaseLLMHandler):
 
         try:
             # Create a client with a longer timeout (30 minutes)
-            client = ollama.Client(timeout=1800.0)
+            from src.utils.ollama_client import get_ollama_client
+            client = get_ollama_client()
 
             # Make the API call with the client
             response = client.chat(
@@ -993,7 +994,8 @@ class OllamaHandler(BaseLLMHandler):
 
         try:
             # Create a client with a longer timeout (30 minutes)
-            client = ollama.Client(timeout=1800.0)
+            from src.utils.ollama_client import get_ollama_client
+            client = get_ollama_client()
 
             # Make the API call with the client
             response = client.chat(
@@ -1128,7 +1130,8 @@ class OllamaHandler(BaseLLMHandler):
 
         try:
             # Create a client with a longer timeout (30 minutes)
-            client = ollama.Client(timeout=1800.0)
+            from src.utils.ollama_client import get_ollama_client
+            client = get_ollama_client()
 
             # Using structured logging format - format schema is captured here
             logger.info(f"Using Ollama with format schema for {self.api_model_name}")
@@ -1395,7 +1398,8 @@ class OllamaHandler(BaseLLMHandler):
 
         try:
             # Create a client with a longer timeout
-            client = ollama.Client(timeout=1800.0)
+            from src.utils.ollama_client import get_ollama_client
+            client = get_ollama_client()
 
             # Make the streaming API call
             response_stream = client.chat(

@@ -56,6 +56,10 @@ export interface SettingsUpdate {
 	chunk_size?: number | null;
 	chunk_overlap?: number | null;
 	hybrid_visual_weight?: number | null;
+	use_hyde?: boolean | null;
+	hyde_model?: string | null;
+	use_llm_rerank?: boolean | null;
+	llm_rerank_model?: string | null;
 	model_params?: Record<string, any> | null;
 }
 

@@ -1,0 +1,21 @@
+{
+  "_comment": "Tiny example golden set — intentionally synthetic so the harness can be smoke-tested without real documents. Replace with your own queries when running benchmarks.",
+  "cases": [
+    {
+      "query": "What is the company's Q3 revenue?",
+      "relevant": ["10K-2024.pdf#12", "10K-2024.pdf#13"],
+      "relevance": {"10K-2024.pdf#12": 3, "10K-2024.pdf#13": 2},
+      "tag": "financials"
+    },
+    {
+      "query": "How does the encoder handle multi-image inputs?",
+      "relevant": ["paper-arch.pdf#4", "paper-arch.pdf#5", "paper-arch.pdf#6"],
+      "tag": "technical"
+    },
+    {
+      "query": "What are the safety constraints described in section 7?",
+      "relevant": ["policy-v2.pdf#7"],
+      "tag": "policy"
+    }
+  ]
+}

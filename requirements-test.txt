@@ -1,0 +1,22 @@
+# Minimal dependency set for the test suite + CI.
+# Heavy ML deps (torch, transformers, colpali, lancedb) aren't imported at
+# module load time, so test runs don't need them. If a future test asserts
+# real RAG behavior, mark it `@pytest.mark.slow` and install from
+# requirements.txt instead.
+
+fastapi
+uvicorn
+python-multipart
+fastapi-users[sqlalchemy]
+aiosqlite
+slowapi>=0.1.9
+
+# HTTP client + cookie handling for FastAPI TestClient
+httpx>=0.27
+
+# Test runner + extras
+pytest>=8.0
+pytest-asyncio>=0.23
+
+# Linting (kept here so the same install seed runs lint + test in CI)
+ruff>=0.6

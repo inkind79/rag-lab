@@ -6,6 +6,7 @@ uvicorn[standard]
 python-multipart
 fastapi-users[sqlalchemy]
 aiosqlite
+slowapi>=0.1.9
 
 # ML / Vision
 torch
@@ -44,6 +45,7 @@ huggingface_hub>=0.20.2
 markdown
 hf_transfer
 backoff>=2.2.1
+prometheus_client>=0.20  # /metrics endpoint + middleware
 
 # GPU acceleration (Linux only)
 flash-attn; sys_platform != 'darwin'

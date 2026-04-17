@@ -1,0 +1,61 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    "slow: tests that take more than ~1s (mostly DB / file I/O setup)",
+    "integration: tests that exercise the FastAPI app end-to-end via TestClient",
+]
+filterwarnings = [
+    # FastAPI-Users 14 emits these on every test run; not actionable for us.
+    "ignore::DeprecationWarning:fastapi_users",
+    "ignore::DeprecationWarning:passlib",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+# Lint scope is intentionally narrow for now: tests/ and the small set of
+# utilities we recently added. The legacy src/ tree has ~1.6k cosmetic issues
+# (blank-line whitespace, import order) that are unrelated to actual bugs;
+# a baseline `ruff format` pass should land in its own PR before broadening.
+include = [
+    "tests/**/*.py",
+    "src/utils/path_safety.py",
+    "src/utils/secure_dirs.py",
+    "src/utils/log_redaction.py",
+    "src/api/rate_limit.py",
+    "pyproject.toml",
+]
+extend-exclude = [
+    "frontend",
+    ".svelte-kit",
+    "node_modules",
+    "checkpoints*",
+    "OLD_CHECKPOINTS_DO_NOT_USE",
+    "backups",
+    "logs",
+    "data",
+    "sessions",
+    "uploaded_documents",
+    ".lancedb",
+    ".memory_chromadb",
+    ".byaldi",
+    ".bm25",
+    "static",
+]
+
+[tool.ruff.lint]
+# Conservative rule set — focused on real bugs over style.
+select = ["E", "F", "B", "W", "I"]
+ignore = [
+    "E501",  # line too long; existing code is wide and this isn't a quality bug
+    "E731",  # lambda assignment
+    "B008",  # function call in argument default (FastAPI Depends pattern)
+    "B904",  # raise without from inside except
+]

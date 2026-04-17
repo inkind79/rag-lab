@@ -113,7 +113,7 @@
 				<div class="two-col">
 					<!-- Left: model selection -->
 					<div class="col-left">
-						<label class="field-label">Generation Model</label>
+						<span class="field-label">Generation Model</span>
 						<select bind:value={generation_model} class="model-select">
 							{#if huggingfaceModels.length > 0}
 								<optgroup label="HuggingFace (Local)">
@@ -149,7 +149,7 @@
 
 						<!-- Temperature (all providers) -->
 						<div class="param">
-							<label>Temperature</label>
+							<span class="param-label">Temperature</span>
 							<div class="slider-row">
 								<input type="range" bind:value={temperature} min={0} max={1} step={0.05} />
 								<span class="slider-val">{temperature.toFixed(2)}</span>
@@ -159,7 +159,7 @@
 
 						<!-- Max Tokens (all providers) -->
 						<div class="param">
-							<label>Max Tokens</label>
+							<span class="param-label">Max Tokens</span>
 							{#if provider === 'ollama'}
 								<input type="number" bind:value={num_predict} min={256} max={32768} step={256} />
 								<span class="param-hint">Max output tokens</span>
@@ -170,7 +170,7 @@
 
 						<!-- Top P (all providers) -->
 						<div class="param">
-							<label>Top P</label>
+							<span class="param-label">Top P</span>
 							<div class="slider-row">
 								<input type="range" bind:value={top_p} min={0} max={1} step={0.05} />
 								<span class="slider-val">{top_p.toFixed(2)}</span>
@@ -180,7 +180,7 @@
 						<!-- Top K (Ollama) -->
 						{#if provider === 'ollama'}
 							<div class="param">
-								<label>Top K</label>
+								<span class="param-label">Top K</span>
 								<input type="number" bind:value={top_k} min={1} max={100} />
 							</div>
 						{/if}
@@ -188,12 +188,12 @@
 						<!-- Ollama-specific -->
 						{#if provider === 'ollama'}
 							<div class="param">
-								<label>Context Window</label>
+								<span class="param-label">Context Window</span>
 								<input type="number" bind:value={num_ctx} min={1024} max={32768} step={1024} />
 								<span class="param-hint">Max context tokens (default 8192)</span>
 							</div>
 							<div class="param">
-								<label>Repeat Penalty</label>
+								<span class="param-label">Repeat Penalty</span>
 								<div class="slider-row">
 									<input type="range" bind:value={repeat_penalty} min={0.1} max={2.0} step={0.1} />
 									<span class="slider-val">{repeat_penalty.toFixed(1)}</span>
@@ -220,18 +220,18 @@
 		display: flex; align-items: center; justify-content: center; z-index: 1000;
 	}
 	.modal {
-		background: #fff; border-radius: 12px; width: 640px;
+		background: var(--bg-card, #fff); border-radius: 12px; width: 640px;
 		max-height: 85vh; overflow-y: auto;
 		box-shadow: 0 20px 60px rgba(0,0,0,0.15);
 	}
 	.modal-header {
 		display: flex; justify-content: space-between; align-items: center;
-		padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb;
+		padding: 1rem 1.25rem; border-bottom: 1px solid var(--border, #e5e7eb);
 	}
-	.modal-header h2 { margin: 0; font-size: 1.1rem; color: #1f2937; letter-spacing: 0.1em; }
+	.modal-header h2 { margin: 0; font-size: 1.1rem; color: var(--text-heading, #1f2937); letter-spacing: 0.1em; }
 	.close-btn {
 		background: none; border: none; font-size: 1.5rem;
-		color: #9ca3af; cursor: pointer; line-height: 1;
+		color: var(--text-muted, #9ca3af); cursor: pointer; line-height: 1;
 	}
 	.modal-body { padding: 1.25rem; }
 
@@ -239,13 +239,14 @@
 	.col-left { flex: 1; min-width: 0; }
 	.col-right { flex: 1; min-width: 0; }
 
-	.field-label { font-size: 0.78rem; font-weight: 600; color: #374151; display: block; margin-bottom: 0.3rem; }
+	.field-label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary, #374151); display: block; margin-bottom: 0.3rem; }
 
 	.model-select {
-		width: 100%; padding: 0.4rem 0.5rem; border: 1px solid #d1d5db;
-		border-radius: 6px; font-size: 0.82rem; color: #1f2937; background: #fff;
+		width: 100%; padding: 0.4rem 0.5rem; border: 1px solid var(--border, #d1d5db);
+		border-radius: 6px; font-size: 0.82rem;
+		color: var(--text-primary, #1f2937); background: var(--bg-input, #fff);
 	}
-	.model-select:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 2px rgba(99,102,241,0.1); }
+	.model-select:focus { border-color: var(--accent, #6366f1); outline: none; box-shadow: 0 0 0 2px rgba(99,102,241,0.1); }
 
 	.text-only-note {
 		margin-top: 0.5rem; font-size: 0.72rem; color: #d97706;
@@ -254,38 +255,39 @@
 	}
 
 	.config-title {
-		font-size: 0.78rem; font-weight: 700; color: #6366f1;
+		font-size: 0.78rem; font-weight: 700; color: var(--accent, #6366f1);
 		text-transform: uppercase; letter-spacing: 0.04em;
 		margin-bottom: 0.6rem;
 	}
 
 	.param { margin-bottom: 0.6rem; }
-	.param label { font-size: 0.75rem; font-weight: 600; color: #374151; display: block; margin-bottom: 2px; }
+	.param label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary, #374151); display: block; margin-bottom: 2px; }
 	.param input[type='number'] {
-		width: 100%; padding: 0.35rem 0.45rem; border: 1px solid #d1d5db;
-		border-radius: 5px; font-size: 0.82rem; color: #1f2937;
+		width: 100%; padding: 0.35rem 0.45rem; border: 1px solid var(--border, #d1d5db);
+		border-radius: 5px; font-size: 0.82rem;
+		color: var(--text-primary, #1f2937); background: var(--bg-input, #fff);
 	}
-	.param input:focus { border-color: #6366f1; outline: none; }
-	.param-hint { font-size: 0.65rem; color: #9ca3af; display: block; margin-top: 1px; }
+	.param input:focus { border-color: var(--accent, #6366f1); outline: none; }
+	.param-hint { font-size: 0.65rem; color: var(--text-muted, #9ca3af); display: block; margin-top: 1px; }
 
 	.slider-row { display: flex; align-items: center; gap: 0.4rem; }
-	.slider-row input[type='range'] { flex: 1; accent-color: #6366f1; }
+	.slider-row input[type='range'] { flex: 1; accent-color: var(--accent, #6366f1); }
 	.slider-val {
-		font-size: 0.75rem; font-weight: 600; color: #374151;
+		font-size: 0.75rem; font-weight: 600; color: var(--text-secondary, #374151);
 		font-variant-numeric: tabular-nums; min-width: 2.2em; text-align: center;
 	}
 
 	.modal-footer {
 		display: flex; justify-content: flex-end; gap: 0.5rem;
-		padding: 0.75rem 1.25rem; border-top: 1px solid #e5e7eb;
+		padding: 0.75rem 1.25rem; border-top: 1px solid var(--border, #e5e7eb);
 	}
 	.btn {
 		padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.85rem;
 		font-weight: 600; cursor: pointer; border: none;
 	}
-	.btn.primary { background: #6366f1; color: white; }
-	.btn.primary:hover:not(:disabled) { background: #4f46e5; }
+	.btn.primary { background: var(--accent, #6366f1); color: white; }
+	.btn.primary:hover:not(:disabled) { background: var(--accent-hover, #4f46e5); }
 	.btn.primary:disabled { opacity: 0.5; }
-	.btn.secondary { background: #f3f4f6; color: #374151; }
-	.btn.secondary:hover { background: #e5e7eb; }
+	.btn.secondary { background: var(--bg-hover, #f3f4f6); color: var(--text-secondary, #374151); }
+	.btn.secondary:hover { background: var(--bg-active, #e5e7eb); }
 </style>

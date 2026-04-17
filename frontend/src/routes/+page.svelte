@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { messages, isStreaming, currentModel, currentModelDisplay } from '$lib/stores/chat';
+	import { messages, isStreaming, currentModel, currentModelDisplay, chatHistoryCursor } from '$lib/stores/chat';
 	import { activeSession, activeSessionId, optimizedQuery } from '$lib/stores/session';
-	import { streamChat, getSessionId, saveSettings, getAvailableModels, getSessionData } from '$lib/api/client';
+	import { streamChat, getSessionId, saveSettings, getAvailableModels, getSessionData, getChatHistoryPage } from '$lib/api/client';
 	import Markdown from '$lib/components/Markdown.svelte';
 	import ModelBadge from '$lib/components/ModelBadge.svelte';
 	import RetrievedImages from '$lib/components/RetrievedImages.svelte';
@@ -120,6 +120,46 @@
 		}
 	}
 
+	let loadingEarlier = $state(false);
+
+	async function loadEarlier() {
+		// Walk one page backward and prepend the older messages onto the store.
+		// We preserve the user's scroll position visually by capturing the
+		// scrollHeight before the prepend and adjusting scrollTop after, so the
+		// in-view conversation doesn't jump.
+		const uuid = $activeSessionId;
+		if (!uuid || loadingEarlier || !$chatHistoryCursor.has_more) return;
+
+		loadingEarlier = true;
+		const prevScrollHeight = chatContainer?.scrollHeight ?? 0;
+		const prevScrollTop = chatContainer?.scrollTop ?? 0;
+
+		try {
+			const page = await getChatHistoryPage(uuid, 50, $chatHistoryCursor.first_index);
+			const normalized = page.messages.map((msg: any) => ({
+				...msg,
+				timestamp: typeof msg.timestamp === 'string' ? new Date(msg.timestamp).getTime() : (msg.timestamp || Date.now()),
+				images: Array.isArray(msg.images) ? msg.images : [],
+			}));
+			messages.update((current) => [...normalized, ...current]);
+			chatHistoryCursor.set({
+				first_index: page.first_index,
+				total: page.total,
+				has_more: page.has_more,
+			});
+			// Restore scroll position so the user's view doesn't jump.
+			await tick();
+			if (chatContainer) {
+				const newScrollHeight = chatContainer.scrollHeight;
+				chatContainer.scrollTop = prevScrollTop + (newScrollHeight - prevScrollHeight);
+			}
+		} catch (e) {
+			console.error('Failed to load earlier messages:', e);
+		} finally {
+			loadingEarlier = false;
+		}
+	}
+
 	async function handleSubmit() {
 		const effectiveQuery = $optimizedQuery || query;
 		if ((!effectiveQuery.trim() && pastedImages.length === 0) || $isStreaming) return;
@@ -135,10 +175,24 @@
 			{ role: 'user', content: userQuery, timestamp: Date.now(), images: userImages.length > 0 ? userImages.map(src => ({ path: src, score: 0 })) : undefined },
 		]);
 
+		await runStream(userQuery, userImages, chatMode === 'batch');
+	}
+
+	/** Retry a failed assistant message by re-running the original request. */
+	async function retryMessage(index: number) {
+		if ($isStreaming) return;
+		const msg = $messages[index];
+		if (!msg?.retryContext) return;
+		const ctx = msg.retryContext;
+		// Drop the failed assistant message before retrying.
+		messages.update((msgs) => msgs.filter((_, i) => i !== index));
+		await runStream(ctx.query, ctx.images || [], !!ctx.isBatch);
+	}
+
+	async function runStream(userQuery: string, userImages: string[], isBatch: boolean) {
 		isStreaming.set(true);
 		streamStage = 'connecting';
 		batchInfo = null;
-		const isBatch = chatMode === 'batch';
 
 		// Per-document state — reset on each doc_start in batch mode
 		let assistantContent = '';
@@ -172,6 +226,12 @@
 			]);
 		}
 
+		const retryContext = {
+			query: userQuery,
+			images: userImages.length > 0 ? userImages : undefined,
+			isBatch,
+		};
+
 		try {
 			const sessionId = getSessionId() || '';
 			streamAbort = new AbortController();
@@ -180,7 +240,15 @@
 				const text = await resp.text();
 				messages.update((msgs) => [
 					...msgs,
-					{ role: 'assistant', id: `msg-${Date.now()}`, content: `**Error:** ${text}`, timestamp: Date.now(), images: [] },
+					{
+						role: 'assistant',
+						id: `msg-${Date.now()}`,
+						content: '',
+						timestamp: Date.now(),
+						images: [],
+						error: `Server returned ${resp.status}: ${text || resp.statusText}`,
+						retryContext,
+					},
 				]);
 				return;
 			}
@@ -270,12 +338,23 @@
 		} catch (error: any) {
 			if (error?.name !== 'AbortError') {
 				console.error('Stream error:', error);
+				const errMsg = error?.message || String(error) || 'Connection lost';
 				messages.update((msgs) => {
 					const last = msgs[msgs.length - 1];
+					// Attach the error to the in-flight assistant message (preserving
+					// any partial content the user already saw) rather than overwriting it.
 					if (last?.role === 'assistant') {
-						msgs[msgs.length - 1] = { ...last, content: `**Error:** ${error}` };
+						msgs[msgs.length - 1] = { ...last, error: errMsg, retryContext };
 					} else {
-						msgs.push({ role: 'assistant', id: `msg-err-${Date.now()}`, content: `**Error:** ${error}`, timestamp: Date.now(), images: [] });
+						msgs.push({
+							role: 'assistant',
+							id: `msg-err-${Date.now()}`,
+							content: '',
+							timestamp: Date.now(),
+							images: [],
+							error: errMsg,
+							retryContext,
+						});
 					}
 					return [...msgs];
 				});
@@ -495,6 +574,19 @@
 
 	<div class="messages-area" bind:this={chatContainer} class:hidden={$messages.length === 0}>
 
+		{#if $chatHistoryCursor.has_more}
+			<div class="load-earlier">
+				<button
+					type="button"
+					class="load-earlier-btn"
+					onclick={loadEarlier}
+					disabled={loadingEarlier}
+				>
+					{loadingEarlier ? 'Loading...' : `Load earlier messages (${$chatHistoryCursor.first_index} of ${$chatHistoryCursor.total} hidden)`}
+				</button>
+			</div>
+		{/if}
+
 		{#each $messages as msg, i}
 			<div class="message {msg.role}" class:upload={msg.type === 'document_upload'} style={msg.role === 'assistant' ? `--vendor-color: ${getVendorColor(msg.model)}` : ''}>
 				{#if msg.type === 'document_upload'}
@@ -541,6 +633,19 @@
 						{#if $isStreaming && i === $messages.length - 1 && (!msg.content || msg.content === '')}
 							<div class="thinking-indicator">
 								<div class="thinking-dots"><span></span><span></span><span></span></div>
+							</div>
+						{/if}
+						{#if msg.error && !$isStreaming}
+							<div class="stream-error" role="alert">
+								<div class="stream-error-text">
+									<strong>Response interrupted.</strong>
+									<span class="stream-error-detail">{msg.error}</span>
+								</div>
+								{#if msg.retryContext}
+									<button type="button" class="stream-error-retry" onclick={() => retryMessage(i)}>
+										Retry
+									</button>
+								{/if}
 							</div>
 						{/if}
 					</div>
@@ -729,6 +834,31 @@
 	}
 	.messages-area.hidden { display: none; }
 
+	.load-earlier {
+		display: flex; justify-content: center;
+		padding: 0.5rem 0 1rem;
+	}
+	.load-earlier-btn {
+		background: var(--bg-card, transparent);
+		color: var(--text-secondary);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 0.4rem 0.9rem;
+		font-size: 0.78rem; font-weight: 500;
+		font-family: var(--font-sans, inherit);
+		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s, color 0.15s;
+	}
+	.load-earlier-btn:hover:not(:disabled) {
+		background: var(--bg-hover);
+		color: var(--text-primary);
+		border-color: var(--text-secondary);
+	}
+	.load-earlier-btn:disabled { opacity: 0.55; cursor: progress; }
+	.load-earlier-btn:focus-visible {
+		outline: 2px solid var(--accent, #6366f1); outline-offset: 2px;
+	}
+
 	/* ── Bottom bar (when messages exist) ── */
 	.bottom-bar {
 		padding: 0.5rem 1rem 1rem;
@@ -781,6 +911,29 @@
 		padding: 0.5rem 0.75rem; font-size: 0.82rem; color: var(--text-secondary);
 	}
 	.reasoning-block summary { cursor: pointer; font-weight: 600; font-size: 0.75rem; color: var(--text-muted); }
+
+	.stream-error {
+		display: flex; align-items: flex-start; gap: 0.75rem;
+		margin-top: 0.5rem; padding: 0.6rem 0.75rem;
+		background: color-mix(in srgb, var(--danger, #c43d3d) 8%, var(--bg-hover));
+		border: 1px solid color-mix(in srgb, var(--danger, #c43d3d) 30%, transparent);
+		border-left: 3px solid var(--danger, #c43d3d);
+		border-radius: 8px;
+		font-size: 0.8rem;
+	}
+	.stream-error-text { flex: 1; min-width: 0; line-height: 1.45; color: var(--text-primary); }
+	.stream-error-text strong { color: var(--text-heading); margin-right: 0.4rem; }
+	.stream-error-detail { color: var(--text-secondary); word-break: break-word; }
+	.stream-error-retry {
+		flex-shrink: 0;
+		padding: 0.3rem 0.7rem;
+		background: var(--bg-card); color: var(--text-primary);
+		border: 1px solid var(--border); border-radius: 6px;
+		font-family: var(--font-sans); font-size: 0.78rem; font-weight: 600;
+		cursor: pointer; transition: all 0.12s;
+	}
+	.stream-error-retry:hover { background: var(--bg-hover); border-color: var(--text-secondary); }
+	.stream-error-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 	.thinking-indicator { padding: 0.25rem 0; }
 	.thinking-dots { display: flex; gap: 4px; }

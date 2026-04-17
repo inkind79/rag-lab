@@ -3,12 +3,17 @@ Process Isolation Service for LanceDB Operations.
 
 This module provides a way to run LanceDB operations in separate processes to
 ensure memory is completely released after each operation.
+
+Security note: argument marshalling to the child process uses numpy.save /
+np.savez / torch.save exclusively. Pickle is never used — torch.load is
+called with weights_only=True so tensor payloads can't execute arbitrary
+code during deserialization. Legacy "._type: list" temp files from older
+builds are rejected on load.
 """
 
 import os
 import json
 import time
-import pickle
 import signal
 import tempfile
 import multiprocessing
@@ -270,21 +275,24 @@ class LanceDBProcessService:
                     logger.error(f"Error saving tensor to temp file: {e}")
                     prepared_args[key] = value
             
-            # Handle lists of numpy arrays or tensors
+            # Handle lists of numpy arrays or tensors. Use torch.save (which is
+            # safely loadable via weights_only=True) or numpy's .npz; never pickle.
             elif isinstance(value, list) and value and (
-                    isinstance(value[0], np.ndarray) or 
+                    isinstance(value[0], np.ndarray) or
                     str(type(value[0])).startswith("<class 'torch.")):
-                
-                # Create a temporary file
-                fd, path = tempfile.mkstemp(suffix='.pkl')
-                os.close(fd)
-                
-                # Save the list
-                with open(path, 'wb') as f:
-                    pickle.dump(value, f)
-                
-                # Store the path
-                prepared_args[key] = {'_type': 'list', 'path': path}
+
+                if isinstance(value[0], np.ndarray):
+                    fd, path = tempfile.mkstemp(suffix='.npz')
+                    os.close(fd)
+                    np.savez(path, *value)
+                    prepared_args[key] = {'_type': 'list_numpy', 'path': path}
+                else:
+                    import torch
+                    fd, path = tempfile.mkstemp(suffix='.pt')
+                    os.close(fd)
+                    torch.save(value, path)
+                    prepared_args[key] = {'_type': 'list_torch', 'path': path}
+
                 temp_files.append(path)
             
             # Handle other types
@@ -311,16 +319,24 @@ class LanceDBProcessService:
         # Handle dictionaries that may contain temp file paths
         if isinstance(result, dict) and '_type' in result and 'path' in result:
             if result['_type'] == 'numpy':
-                # Load numpy array
-                return np.load(result['path'])
+                return np.load(result['path'], allow_pickle=False)
             elif result['_type'] == 'torch':
-                # Load torch tensor
                 import torch
-                return torch.load(result['path'])
+                return torch.load(result['path'], weights_only=True)
+            elif result['_type'] == 'list_numpy':
+                loaded = np.load(result['path'], allow_pickle=False)
+                return [loaded[k] for k in sorted(loaded.files, key=lambda s: int(s.split('_')[-1]))]
+            elif result['_type'] == 'list_torch':
+                import torch
+                return torch.load(result['path'], weights_only=True)
             elif result['_type'] == 'list':
-                # Load list
-                with open(result['path'], 'rb') as f:
-                    return pickle.load(f)
+                # Legacy pickle path — refuse; caller should re-run whatever
+                # produced this result under the new code path.
+                raise RuntimeError(
+                    "Refusing to unpickle untrusted IPC payload; "
+                    "this temp file was produced by an older build. "
+                    "Retrying the isolated call will rewrite it in a safe format."
+                )
         
         # Handle tuples that may contain dictionaries
         elif isinstance(result, tuple):

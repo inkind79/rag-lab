@@ -28,6 +28,12 @@
 	let rel_drop_threshold = $state(0.65);
 	let abs_score_threshold = $state(0.25);
 	let distance_metric = $state('cosine');
+	// HyDE + LLM reranking (Phase 5 toggles). Empty model strings = fall back
+	// to generation_model server-side; we only send non-empty overrides.
+	let use_hyde = $state(false);
+	let hyde_model = $state('');
+	let use_llm_rerank = $state(false);
+	let llm_rerank_model = $state('');
 
 	// ── Advanced tab ──
 	let resized_height = $state(448);
@@ -176,6 +182,10 @@
 				abs_score_threshold = data.abs_score_threshold ?? 0.25;
 				distance_metric = data.distance_metric || 'cosine';
 				hybrid_visual_weight = data.hybrid_visual_weight ?? 0.6;
+				use_hyde = data.use_hyde ?? false;
+				hyde_model = data.hyde_model ?? '';
+				use_llm_rerank = data.use_llm_rerank ?? false;
+				llm_rerank_model = data.llm_rerank_model ?? '';
 				// Advanced
 				resized_height = data.resized_height || 448;
 				resized_width = data.resized_width || 448;
@@ -204,6 +214,10 @@
 				use_score_slope, rel_drop_threshold, abs_score_threshold,
 				distance_metric, resized_height, resized_width,
 				use_ocr, ocr_engine, save_globally,
+				use_hyde,
+				hyde_model: hyde_model.trim() || null,
+				use_llm_rerank,
+				llm_rerank_model: llm_rerank_model.trim() || null,
 			});
 			toasts.success('Settings saved');
 			onclose();
@@ -236,7 +250,7 @@
 				<!-- ═══ MODEL TAB ═══ -->
 				{#if activeTab === 'model'}
 					<div class="group">
-						<label class="label">Generation Model</label>
+						<span class="label">Generation Model</span>
 						<select bind:value={generation_model} class="full">
 							{#if huggingfaceModels.length > 0}
 								<optgroup label="HuggingFace (Local)">
@@ -257,7 +271,7 @@
 					</div>
 
 					<div class="group">
-						<label class="label">Model Parameters</label>
+						<span class="label">Model Parameters</span>
 
 						<div class="param">
 							<span class="param-name">Temperature</span>
@@ -312,7 +326,7 @@
 				<!-- ═══ RETRIEVAL TAB ═══ -->
 				{:else if activeTab === 'retrieval'}
 					<div class="group">
-						<label class="label">Embedding Model</label>
+						<span class="label">Embedding Model</span>
 						<select bind:value={indexer_model} class="full">
 							{#each embeddingModels as m}<option value={m.value}>{m.label}</option>{/each}
 						</select>
@@ -320,7 +334,7 @@
 					</div>
 
 					<div class="group">
-						<label class="label">Retrieval Method</label>
+						<span class="label">Retrieval Method</span>
 						<select bind:value={retrieval_method} class="full">
 							{#each methods as m}<option value={m.value}>{m.label}</option>{/each}
 						</select>
@@ -350,7 +364,7 @@
 					</div>
 
 					<div class="group">
-						<label class="label">Search Parameters</label>
+						<span class="label">Search Parameters</span>
 						<div class="row">
 							<div class="field">
 								<span class="param-name">Max Results</span>
@@ -374,7 +388,7 @@
 					</div>
 
 					<div class="group">
-						<label class="label">Adaptive Score-Slope</label>
+						<span class="label">Adaptive Score-Slope</span>
 						<label class="toggle">
 							<input type="checkbox" bind:checked={use_score_slope} />
 							<span>Enable adaptive analysis</span>
@@ -400,10 +414,54 @@
 						<span class="hint">Dynamically determines how many pages to retrieve based on relevance drop-off.</span>
 					</div>
 
+					<div class="group">
+						<label class="label">Query Expansion (HyDE)</label>
+						<label class="toggle">
+							<input type="checkbox" bind:checked={use_hyde} />
+							<span>Generate a hypothetical answer and retrieve against it</span>
+						</label>
+						{#if use_hyde}
+							<div class="row" style="margin-top: 0.5rem;">
+								<div class="field">
+									<span class="param-name">Model (optional)</span>
+									<input
+										type="text"
+										bind:value={hyde_model}
+										placeholder="Leave blank to use the generation model"
+										class="full"
+									/>
+								</div>
+							</div>
+						{/if}
+						<span class="hint">Adds a short LLM-generated passage to the query so retrieval matches the vocabulary of an answer, not just the question. Adds ~1 LLM call per query.</span>
+					</div>
+
+					<div class="group">
+						<label class="label">LLM Reranking</label>
+						<label class="toggle">
+							<input type="checkbox" bind:checked={use_llm_rerank} />
+							<span>Rerank the top retrieved pages with an LLM before generation</span>
+						</label>
+						{#if use_llm_rerank}
+							<div class="row" style="margin-top: 0.5rem;">
+								<div class="field">
+									<span class="param-name">Model (optional)</span>
+									<input
+										type="text"
+										bind:value={llm_rerank_model}
+										placeholder="Leave blank to use the generation model"
+										class="full"
+									/>
+								</div>
+							</div>
+						{/if}
+						<span class="hint">A small LLM scores each retrieved passage 0–10 against the query. Improves precision for ambiguous queries. Adds 1–2 LLM calls per retrieval (10 passages per batch).</span>
+					</div>
+
 				<!-- ═══ ADVANCED TAB ═══ -->
 				{:else}
 					<div class="group">
-						<label class="label">Ollama Cloud</label>
+						<span class="label">Ollama Cloud</span>
 						<span class="hint">Connect to Ollama's cloud models with your API key from <a href="https://ollama.com/settings/keys" target="_blank" rel="noopener">ollama.com/settings/keys</a></span>
 						<div class="key-row">
 							<input type="password" bind:value={ollamaApiKey}
@@ -416,7 +474,7 @@
 					</div>
 
 					<div class="group">
-						<label class="label">OCR Text Extraction</label>
+						<span class="label">OCR Text Extraction</span>
 						<label class="toggle">
 							<input type="checkbox" bind:checked={use_ocr} />
 							<span>Enable OCR</span>
