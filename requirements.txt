@@ -45,6 +45,7 @@ huggingface_hub>=0.20.2
 markdown
 hf_transfer
 backoff>=2.2.1
+python-json-logger>=2.0  # optional: enables LOG_FORMAT=json structured logs
 
 # GPU acceleration (Linux only)
 flash-attn; sys_platform != 'darwin'

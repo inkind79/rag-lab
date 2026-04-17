@@ -7,6 +7,45 @@ from datetime import datetime
 # Set up root logger once
 _root_logger_configured = False
 
+
+def _build_formatter(target: str) -> logging.Formatter:
+    """Pick the log line format for a given handler target.
+
+    ``LOG_FORMAT=json`` switches both console and file output to one
+    structured JSON record per line — the right shape for shipping into a
+    log aggregator (Loki, Elastic, Datadog, etc.). The default keeps the
+    existing human-readable format so local development stays readable.
+
+    The console + file targets get slightly different field sets in
+    text mode for backward-compat with operators who grep app.log; in
+    JSON mode they're identical.
+    """
+    if os.environ.get('LOG_FORMAT', '').lower() == 'json':
+        # pythonjsonlogger 3.x moved the JsonFormatter; fall back to the
+        # 2.x location so we work with both pinned versions.
+        try:
+            from pythonjsonlogger.json import JsonFormatter
+        except ImportError:
+            try:
+                from pythonjsonlogger.jsonlogger import JsonFormatter
+            except ImportError:
+                print("LOG_FORMAT=json set but python-json-logger not installed; falling back to text")
+                JsonFormatter = None
+        if JsonFormatter is not None:
+            # rename_fields keeps record names familiar in collectors that
+            # expect the standard ECS-ish vocabulary.
+            return JsonFormatter(
+                '%(asctime)s %(levelname)s %(name)s %(filename)s %(lineno)d %(message)s',
+                rename_fields={'asctime': 'timestamp', 'levelname': 'level', 'name': 'logger'},
+            )
+
+    if target == 'console':
+        return logging.Formatter(
+            '[%(asctime)s] [%(levelname)8s] %(filename)s:%(lineno)d - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S',
+        )
+    return logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+
 def reset_log_file(log_file_path='logs/app.log', backup_old_log=True):
     """
     Reset the log file at application startup.
@@ -72,9 +111,7 @@ def _configure_root_logger():
         # Console handler - only log INFO and above to console
         c_handler = logging.StreamHandler()
         c_handler.setLevel(logging.INFO)
-        c_format = logging.Formatter('[%(asctime)s] [%(levelname)8s] %(filename)s:%(lineno)d - %(message)s',
-                                    datefmt='%Y-%m-%d %H:%M:%S')
-        c_handler.setFormatter(c_format)
+        c_handler.setFormatter(_build_formatter('console'))
 
         # Filter out memory cleaning logs
         class MemoryCleaningFilter(logging.Filter):
@@ -94,8 +131,7 @@ def _configure_root_logger():
         os.makedirs('logs', exist_ok=True)
         f_handler = logging.FileHandler('logs/app.log')
         f_handler.setLevel(logging.INFO)  # Changed from DEBUG to INFO
-        f_format = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-        f_handler.setFormatter(f_format)
+        f_handler.setFormatter(_build_formatter('file'))
         f_handler.addFilter(MemoryCleaningFilter())
 
         # Redact known secrets (Authorization headers, hf_/sk- tokens, and any
