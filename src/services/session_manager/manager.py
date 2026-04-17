@@ -62,6 +62,11 @@ DEFAULT_GLOBAL_SETTINGS = {
   "chunk_size": 512,                       # Text chunking: characters per chunk
   "chunk_overlap": 64,                     # Text chunking: overlap between chunks
   "hybrid_visual_weight": 0.6,             # Weight for visual vs keyword in hybrid mode (0=keyword, 1=visual)
+  # Query expansion & reranking — both opt-in; default off preserves existing retrieval behavior.
+  "use_hyde": False,                        # Generate hypothetical-answer passage + concat with query
+  "hyde_model": None,                       # Optional model override for HyDE; None → use generation_model
+  "use_llm_rerank": False,                  # LLM-rerank the top budget-fitted results before returning
+  "llm_rerank_model": None,                 # Optional model override for reranking; None → use generation_model
 }
 
 def _deep_merge_model_params(base: Dict, overlay: Dict) -> Dict:
