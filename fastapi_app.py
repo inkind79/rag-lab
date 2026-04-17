@@ -25,6 +25,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api import config
+from src.api.csrf import CSRFOriginMiddleware
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -82,6 +83,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-Session-UUID", "Authorization"],
 )
+
+# CSRF: reject cross-origin state-changing requests that carry the auth cookie.
+# Unauthenticated requests (login, register) pass through; disable entirely
+# via CSRF_DISABLE=true (tests only).
+app.add_middleware(CSRFOriginMiddleware)
 
 # Standardized error responses
 @app.exception_handler(HTTPException)
