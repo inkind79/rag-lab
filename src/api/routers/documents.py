@@ -10,11 +10,12 @@ DELETE /api/v1/documents
 
 import os
 from typing import List
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Request
 from pydantic import BaseModel
 
 from src.api.deps import get_session_id, get_session_data, get_rag_models
 from src.api.deps import get_current_user
+from src.api.rate_limit import UPLOAD_LIMIT, limiter
 from src.api import config
 from src.utils.logger import get_logger
 from src.utils.path_safety import safe_filename, safe_join, UnsafePathError
@@ -51,7 +52,9 @@ async def get_documents(session_uuid: str, user_id: str = Depends(get_current_us
 
 
 @router.post("/documents/upload")
+@limiter.limit(UPLOAD_LIMIT)
 async def upload_documents(
+    request: Request,
     files: List[UploadFile] = File(...),
     session_id: str = Depends(get_session_id),
     session_data: dict = Depends(get_session_data),

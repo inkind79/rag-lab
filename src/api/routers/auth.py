@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from fastapi_users.db import SQLAlchemyUserDatabase
 
+from src.api.rate_limit import LOGIN_LIMIT, limiter
 from src.api.users import (
     fastapi_users, auth_backend, UserRead, UserCreate, UserManager,
     current_active_user, get_jwt_strategy,
@@ -18,7 +19,7 @@ from src.api.db import User, get_async_session
 
 router = APIRouter()
 
-# ── Registration (FastAPI-Users built-in) ──
+# ── Registration (FastAPI-Users built-in; rate-limited via PathRateLimitMiddleware) ──
 router.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
@@ -56,6 +57,7 @@ def _get_dummy_hash(manager: 'UserManager') -> str:
 
 
 @router.post("/auth/login")
+@limiter.limit(LOGIN_LIMIT)
 async def login_by_username(
     request: Request,
     body: LoginRequest,

@@ -19,12 +19,20 @@ from src.utils.platform_shim import apply_platform_shim
 apply_platform_shim()
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from src.api import config
+from src.api.rate_limit import (
+    PathRateLimitMiddleware,
+    limiter,
+    path_limits,
+    rate_limit_exceeded_handler,
+)
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -71,7 +79,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — origins are env-driven via CORS_ORIGINS (comma-separated)
+# Rate limiting: slowapi reads @limiter.limit decorators from route handlers;
+# PathRateLimitMiddleware guards routes we don't own (fastapi-users /auth/register).
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(PathRateLimitMiddleware, path_limits=path_limits())
+
+# CORS — SvelteKit dev server + production
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
