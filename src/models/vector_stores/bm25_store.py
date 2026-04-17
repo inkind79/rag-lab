@@ -12,6 +12,7 @@ from typing import List, Dict, Any, Optional, Tuple
 
 from src.models.vector_stores.base_store import BaseVectorStore
 from src.utils.logger import get_logger
+from src.utils.secure_dirs import secure_makedirs
 
 logger = get_logger(__name__)
 
@@ -53,7 +54,7 @@ class BM25Store(BaseVectorStore):
     def _save_index(self, session_id: str, data: dict):
         """Persist BM25 index to disk."""
         session_dir = self._session_dir(session_id)
-        os.makedirs(session_dir, exist_ok=True)
+        secure_makedirs(session_dir)
         index_path = os.path.join(session_dir, "index.pkl")
         with open(index_path, 'wb') as f:
             pickle.dump(data, f)

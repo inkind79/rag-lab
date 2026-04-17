@@ -13,6 +13,7 @@ import time
 import torch
 import numpy as np
 from src.utils.logger import get_logger
+from src.utils.secure_dirs import secure_makedirs
 
 logger = get_logger(__name__)
 
@@ -43,8 +44,8 @@ class EmbeddingCache:
             model_dir = model_name.replace("/", "_")
             self.cache_dir = os.path.join(cache_dir, model_dir)
         
-        os.makedirs(self.cache_dir, exist_ok=True)
-        
+        secure_makedirs(self.cache_dir)
+
         # Create metadata file if it doesn't exist
         self.metadata_file = os.path.join(self.cache_dir, "metadata.json")
         if not os.path.exists(self.metadata_file):

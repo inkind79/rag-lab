@@ -32,6 +32,13 @@ def get_ollama_api_key() -> str:
 
 
 def set_ollama_api_key(key: str):
-    """Update the Ollama API key at runtime."""
+    """Update the Ollama API key at runtime, keeping log redaction in sync."""
+    from src.utils.log_redaction import register_secret, unregister_secret
+
+    old = config.OLLAMA_API_KEY
+    if old:
+        unregister_secret(old)
     config.OLLAMA_API_KEY = key
     os.environ['OLLAMA_API_KEY'] = key
+    if key:
+        register_secret(key)

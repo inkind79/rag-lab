@@ -12,6 +12,7 @@ import json
 import time
 from typing import Dict, List, Any, Optional, Tuple
 from src.utils.logger import get_logger
+from src.utils.secure_dirs import secure_makedirs
 
 logger = get_logger(__name__)
 
@@ -39,7 +40,7 @@ class SearchResultsCache:
 
         # Create cache directory if it doesn't exist
         try:
-            os.makedirs(self.cache_dir, exist_ok=True)
+            secure_makedirs(self.cache_dir)
             logger.info(f"Ensured cache directory exists at {self.cache_dir}")
         except Exception as e:
             logger.warning(f"Error creating cache directory {self.cache_dir}: {e}")
@@ -47,7 +48,7 @@ class SearchResultsCache:
             try:
                 import tempfile
                 self.cache_dir = os.path.join(tempfile.gettempdir(), 'search_results_cache')
-                os.makedirs(self.cache_dir, exist_ok=True)
+                secure_makedirs(self.cache_dir)
                 logger.warning(f"Using fallback cache directory: {self.cache_dir}")
             except Exception:
                 logger.error(f"Failed to create fallback cache directory, caching may not work")
@@ -168,7 +169,7 @@ class SearchResultsCache:
                 
             # Ensure cache directory exists
             try:
-                os.makedirs(self.cache_dir, exist_ok=True)
+                secure_makedirs(self.cache_dir)
             except Exception as e:
                 logger.warning(f"Error ensuring cache directory exists: {e}")
                 return None
@@ -243,7 +244,7 @@ class SearchResultsCache:
         try:
             # Ensure cache directory exists
             try:
-                os.makedirs(self.cache_dir, exist_ok=True)
+                secure_makedirs(self.cache_dir)
             except Exception as e:
                 logger.warning(f"Error ensuring cache directory exists for put: {e}")
                 return False
