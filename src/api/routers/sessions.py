@@ -103,6 +103,62 @@ async def rename_session(session_uuid: str, body: RenameRequest, user_id: str = 
     return {"success": True, "data": {"session_name": body.name.strip()}}
 
 
+@router.get("/sessions/{session_uuid}/chat_history")
+async def get_chat_history_page(
+    session_uuid: str,
+    limit: int = 50,
+    before: Optional[int] = None,
+    user_id: str = Depends(get_current_user),
+):
+    """Return a paginated slice of a session's chat_history.
+
+    Pages are anchored at the end (newest message has the highest index)
+    and walk backwards. Without ``before``, returns the most recent
+    ``limit`` messages. With ``before=N``, returns the ``limit`` messages
+    that immediately precede index ``N``.
+
+    Response shape:
+      {
+        "success": true,
+        "data": {
+          "messages": [...],          # the slice (still in chronological order)
+          "first_index": int,         # index of the first returned message in the full history
+          "total": int,               # total messages in the session
+          "has_more": bool            # are there older messages to load?
+        }
+      }
+    """
+    from src.services.session_manager.manager import load_session
+
+    if limit <= 0 or limit > 500:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 500")
+
+    session_data = load_session(config.SESSION_FOLDER, session_uuid)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session_data.get('user_id') != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    history = session_data.get('chat_history', []) or []
+    total = len(history)
+
+    # Resolve the slice. ``before`` is exclusive: messages[..before] is the
+    # tail we'd skip; messages[..before][-limit:] is the page we return.
+    end = total if before is None else max(0, min(before, total))
+    start = max(0, end - limit)
+    page = history[start:end]
+
+    return {
+        "success": True,
+        "data": {
+            "messages": page,
+            "first_index": start,
+            "total": total,
+            "has_more": start > 0,
+        },
+    }
+
+
 @router.delete("/sessions/all")
 async def delete_all_sessions(user_id: str = Depends(get_current_user)):
     """Delete all sessions for the current user. Must be defined before the

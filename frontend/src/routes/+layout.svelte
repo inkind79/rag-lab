@@ -2,13 +2,14 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { sessions, activeSessionId } from '$lib/stores/session';
-	import { messages } from '$lib/stores/chat';
+	import { messages, chatHistoryCursor } from '$lib/stores/chat';
 	import {
 		checkAuth, listSessions, getSessionData, getSessionById, switchSession as apiSwitchSession,
 		createNewSession, setSessionId, getSessionId, logout as apiLogout,
 		renameSession as apiRenameSession, deleteSession as apiDeleteSession,
 		deleteAllSessions as apiDeleteAllSessions,
 		getIndexedFiles, cleanupMemory, emergencyMemoryCleanup,
+		getChatHistoryPage,
 	} from '$lib/api/client';
 	import DocumentPanel from '$lib/components/DocumentPanel.svelte';
 	import TemplatePanel from '$lib/components/TemplatePanel.svelte';
@@ -107,27 +108,39 @@
 		}
 	}
 
-	async function loadSessionData() {
-		try {
-			// Fetch session data by UUID path param — doesn't depend on Flask session cookie
-			const uuid = $activeSessionId;
-			if (!uuid) { messages.set([]); return; }
+	function _normalizeChatMessage(msg: any) {
+		return {
+			...msg,
+			timestamp: typeof msg.timestamp === 'string'
+				? new Date(msg.timestamp).getTime()
+				: (msg.timestamp || Date.now()),
+			images: Array.isArray(msg.images) ? msg.images : [],
+		};
+	}
 
-			const resp = await getSessionById(uuid);
-			const data = resp?.data || resp?.session_data || resp;
-			if (data?.chat_history && Array.isArray(data.chat_history)) {
-				// Normalize chat history: ensure timestamps are numbers, images are arrays
-				const normalized = data.chat_history.map((msg: any) => ({
-					...msg,
-					timestamp: typeof msg.timestamp === 'string' ? new Date(msg.timestamp).getTime() : (msg.timestamp || Date.now()),
-					images: Array.isArray(msg.images) ? msg.images : [],
-				}));
-				messages.set(normalized);
-			} else {
+	async function loadSessionData() {
+		// Loads only the most recent CHAT_PAGE_SIZE messages so a session with
+		// hundreds of turns doesn't blow open-time. Older messages can be pulled
+		// in via chatHistoryCursor's has_more flag (the message list shows a
+		// "Load earlier" affordance).
+		const CHAT_PAGE_SIZE = 50;
+		try {
+			const uuid = $activeSessionId;
+			if (!uuid) {
 				messages.set([]);
+				chatHistoryCursor.set({ first_index: 0, total: 0, has_more: false });
+				return;
 			}
+			const page = await getChatHistoryPage(uuid, CHAT_PAGE_SIZE);
+			messages.set(page.messages.map(_normalizeChatMessage));
+			chatHistoryCursor.set({
+				first_index: page.first_index,
+				total: page.total,
+				has_more: page.has_more,
+			});
 		} catch {
 			messages.set([]);
+			chatHistoryCursor.set({ first_index: 0, total: 0, has_more: false });
 		}
 	}
 
