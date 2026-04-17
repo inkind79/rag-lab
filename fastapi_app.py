@@ -19,7 +19,7 @@ from src.utils.platform_shim import apply_platform_shim
 apply_platform_shim()
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -32,12 +32,7 @@ from src.api.observability import init_sentry
 init_sentry()
 
 from src.api import config
-from src.api.rate_limit import (
-    PathRateLimitMiddleware,
-    limiter,
-    path_limits,
-    rate_limit_exceeded_handler,
-)
+from src.api.metrics import PrometheusMiddleware, render_latest
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -99,6 +94,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-Session-UUID", "Authorization"],
 )
+
+# Record HTTP request count + latency for every non-static route.
+# Cheap (a few microseconds per request) and counters live in-process —
+# /metrics endpoint below exposes them when scraped.
+app.add_middleware(PrometheusMiddleware)
 
 # Standardized error responses
 @app.exception_handler(HTTPException)
@@ -176,3 +176,15 @@ else:
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "rag-lab-api"}
+
+
+from src.api.deps import get_current_user as _get_current_user  # noqa: E402
+
+
+@app.get("/metrics")
+async def prometheus_metrics(user_id: str = Depends(_get_current_user)):
+    """Prometheus scrape endpoint. Admin-only — request paths can be sensitive."""
+    if user_id != 'admin':
+        raise HTTPException(status_code=403, detail="Admin access required")
+    body, content_type = render_latest()
+    return Response(content=body, media_type=content_type)
