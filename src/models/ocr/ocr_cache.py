@@ -3,6 +3,7 @@ import json
 import hashlib
 import threading
 from src.utils.logger import get_logger
+from src.utils.secure_dirs import secure_makedirs
 
 logger = get_logger(__name__)
 
@@ -24,7 +25,7 @@ class OCRCache:
         """Initialize OCR cache with specified directory"""
         self.cache_dir = cache_dir
         self.cache_lock = threading.Lock()
-        os.makedirs(cache_dir, exist_ok=True)
+        secure_makedirs(cache_dir)
         logger.info(f"Initialized OCR cache at {cache_dir}")
     
     def _get_cache_key(self, image_path):
@@ -99,7 +100,7 @@ class OCRCache:
                 import shutil
                 if os.path.exists(self.cache_dir):
                     shutil.rmtree(self.cache_dir)
-                os.makedirs(self.cache_dir, exist_ok=True)
+                secure_makedirs(self.cache_dir)
                 logger.info(f"Cleared OCR cache at {self.cache_dir}")
                 return True
             except Exception as e:

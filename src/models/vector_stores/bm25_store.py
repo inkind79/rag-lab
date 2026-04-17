@@ -13,6 +13,7 @@ from typing import List, Dict, Any, Optional, Tuple
 
 from src.models.vector_stores.base_store import BaseVectorStore
 from src.utils.logger import get_logger
+from src.utils.secure_dirs import secure_makedirs
 
 logger = get_logger(__name__)
 
@@ -87,21 +88,10 @@ class BM25Store(BaseVectorStore):
     def _save_index(self, session_id: str, data: dict):
         """Persist BM25 index to disk (safe format: numpy + JSON)."""
         session_dir = self._session_dir(session_id)
-        os.makedirs(session_dir, exist_ok=True)
-        index_dir = os.path.join(session_dir, _INDEX_SUBDIR)
-        # bm25s.save writes into a directory; clear stale contents first.
-        if os.path.isdir(index_dir):
-            shutil.rmtree(index_dir)
-        os.makedirs(index_dir, exist_ok=True)
-
-        data['retriever'].save(index_dir, allow_pickle=False)
-        sidecar = {
-            'texts': data['texts'],
-            'ids': data['ids'],
-            'metadatas': data['metadatas'],
-        }
-        with open(os.path.join(session_dir, _SIDECAR_NAME), 'w') as f:
-            json.dump(sidecar, f)
+        secure_makedirs(session_dir)
+        index_path = os.path.join(session_dir, "index.pkl")
+        with open(index_path, 'wb') as f:
+            pickle.dump(data, f)
         logger.info(f"Saved BM25 index for session {session_id}")
 
     def add_documents(

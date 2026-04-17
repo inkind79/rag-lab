@@ -13,6 +13,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.utils.logger import get_logger
+from src.utils.secure_dirs import secure_makedirs
 
 logger = get_logger(__name__)
 
@@ -54,14 +55,14 @@ class SearchResultsCache:
         self.cache_expiration = cache_expiration
 
         try:
-            os.makedirs(self.cache_dir, exist_ok=True)
+            secure_makedirs(self.cache_dir)
             logger.info(f"Ensured cache directory exists at {self.cache_dir}")
         except Exception as e:
             logger.warning(f"Error creating cache directory {self.cache_dir}: {e}")
             try:
                 import tempfile
                 self.cache_dir = os.path.join(tempfile.gettempdir(), 'search_results_cache')
-                os.makedirs(self.cache_dir, exist_ok=True)
+                secure_makedirs(self.cache_dir)
                 logger.warning(f"Using fallback cache directory: {self.cache_dir}")
             except Exception:
                 logger.error("Failed to create fallback cache directory, caching may not work")
@@ -157,9 +158,7 @@ class SearchResultsCache:
                 return None
 
             try:
-                logger.info(f"Loading cached search results for query: '{query[:50]}...'")
-                with open(entry_path, "r") as f:
-                    cached_data = json.load(f)
+                secure_makedirs(self.cache_dir)
             except Exception as e:
                 logger.warning(f"Error loading cached search results: {e}")
                 _remove_legacy(entry_path)
@@ -201,9 +200,12 @@ class SearchResultsCache:
             return False
 
         try:
-            os.makedirs(self.cache_dir, exist_ok=True)
-            cache_key = self._get_cache_key(query, session_id, selected_filenames, model_name)
-            entry_path = self._entry_path(cache_key)
+            # Ensure cache directory exists
+            try:
+                secure_makedirs(self.cache_dir)
+            except Exception as e:
+                logger.warning(f"Error ensuring cache directory exists for put: {e}")
+                return False
 
             cache_data = _to_jsonable({
                 "query": query,

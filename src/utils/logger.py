@@ -98,6 +98,25 @@ def _configure_root_logger():
         f_handler.setFormatter(f_format)
         f_handler.addFilter(MemoryCleaningFilter())
 
+        # Redact known secrets (Authorization headers, hf_/sk- tokens, and any
+        # values registered via register_secret) before they hit the handlers.
+        # Filters attached to the *handlers* (rather than to the root logger)
+        # because Python's logging only re-applies handler filters when records
+        # propagate up — logger filters wouldn't catch child-logger records.
+        from src.utils.log_redaction import RedactingFilter, register_secret
+        c_handler.addFilter(RedactingFilter())
+        f_handler.addFilter(RedactingFilter())
+
+        # Pull current secrets from config so registered values mask out
+        # automatically. Lazy import: src.api.config imports the logger, so
+        # eager import would loop.
+        try:
+            from src.api import config as _cfg
+            for value in (_cfg.JWT_SECRET, _cfg.OLLAMA_API_KEY):
+                register_secret(value)
+        except Exception:
+            pass  # config not importable yet (e.g. in tooling) — fine
+
         # Add handlers to root logger
         root_logger.addHandler(c_handler)
         root_logger.addHandler(f_handler)
