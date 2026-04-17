@@ -14,7 +14,7 @@ let sentryReady = false;
 
 if (dsn) {
 	// Dynamic import so the bundle stays lean for users who don't ship Sentry.
-	import('@sentry/sveltekit')
+	import(/* @vite-ignore */ '@sentry/sveltekit')
 		.then((Sentry) => {
 			Sentry.init({
 				dsn,
@@ -35,7 +35,7 @@ export const handleError: HandleClientError = ({ error, event }) => {
 	console.error('[client error]', error, event);
 	if (sentryReady) {
 		// Lazy import again to avoid pulling Sentry into the path when DSN isn't set.
-		import('@sentry/sveltekit')
+		import(/* @vite-ignore */ '@sentry/sveltekit')
 			.then((Sentry) => Sentry.captureException(error))
 			.catch(() => {});
 	}
