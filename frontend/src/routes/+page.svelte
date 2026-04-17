@@ -135,10 +135,24 @@
 			{ role: 'user', content: userQuery, timestamp: Date.now(), images: userImages.length > 0 ? userImages.map(src => ({ path: src, score: 0 })) : undefined },
 		]);
 
+		await runStream(userQuery, userImages, chatMode === 'batch');
+	}
+
+	/** Retry a failed assistant message by re-running the original request. */
+	async function retryMessage(index: number) {
+		if ($isStreaming) return;
+		const msg = $messages[index];
+		if (!msg?.retryContext) return;
+		const ctx = msg.retryContext;
+		// Drop the failed assistant message before retrying.
+		messages.update((msgs) => msgs.filter((_, i) => i !== index));
+		await runStream(ctx.query, ctx.images || [], !!ctx.isBatch);
+	}
+
+	async function runStream(userQuery: string, userImages: string[], isBatch: boolean) {
 		isStreaming.set(true);
 		streamStage = 'connecting';
 		batchInfo = null;
-		const isBatch = chatMode === 'batch';
 
 		// Per-document state — reset on each doc_start in batch mode
 		let assistantContent = '';
@@ -172,6 +186,12 @@
 			]);
 		}
 
+		const retryContext = {
+			query: userQuery,
+			images: userImages.length > 0 ? userImages : undefined,
+			isBatch,
+		};
+
 		try {
 			const sessionId = getSessionId() || '';
 			streamAbort = new AbortController();
@@ -180,7 +200,15 @@
 				const text = await resp.text();
 				messages.update((msgs) => [
 					...msgs,
-					{ role: 'assistant', id: `msg-${Date.now()}`, content: `**Error:** ${text}`, timestamp: Date.now(), images: [] },
+					{
+						role: 'assistant',
+						id: `msg-${Date.now()}`,
+						content: '',
+						timestamp: Date.now(),
+						images: [],
+						error: `Server returned ${resp.status}: ${text || resp.statusText}`,
+						retryContext,
+					},
 				]);
 				return;
 			}
@@ -270,12 +298,23 @@
 		} catch (error: any) {
 			if (error?.name !== 'AbortError') {
 				console.error('Stream error:', error);
+				const errMsg = error?.message || String(error) || 'Connection lost';
 				messages.update((msgs) => {
 					const last = msgs[msgs.length - 1];
+					// Attach the error to the in-flight assistant message (preserving
+					// any partial content the user already saw) rather than overwriting it.
 					if (last?.role === 'assistant') {
-						msgs[msgs.length - 1] = { ...last, content: `**Error:** ${error}` };
+						msgs[msgs.length - 1] = { ...last, error: errMsg, retryContext };
 					} else {
-						msgs.push({ role: 'assistant', id: `msg-err-${Date.now()}`, content: `**Error:** ${error}`, timestamp: Date.now(), images: [] });
+						msgs.push({
+							role: 'assistant',
+							id: `msg-err-${Date.now()}`,
+							content: '',
+							timestamp: Date.now(),
+							images: [],
+							error: errMsg,
+							retryContext,
+						});
 					}
 					return [...msgs];
 				});
@@ -543,6 +582,19 @@
 								<div class="thinking-dots"><span></span><span></span><span></span></div>
 							</div>
 						{/if}
+						{#if msg.error && !$isStreaming}
+							<div class="stream-error" role="alert">
+								<div class="stream-error-text">
+									<strong>Response interrupted.</strong>
+									<span class="stream-error-detail">{msg.error}</span>
+								</div>
+								{#if msg.retryContext}
+									<button type="button" class="stream-error-retry" onclick={() => retryMessage(i)}>
+										Retry
+									</button>
+								{/if}
+							</div>
+						{/if}
 					</div>
 
 					{@const images = getMessageImages(msg)}
@@ -781,6 +833,29 @@
 		padding: 0.5rem 0.75rem; font-size: 0.82rem; color: var(--text-secondary);
 	}
 	.reasoning-block summary { cursor: pointer; font-weight: 600; font-size: 0.75rem; color: var(--text-muted); }
+
+	.stream-error {
+		display: flex; align-items: flex-start; gap: 0.75rem;
+		margin-top: 0.5rem; padding: 0.6rem 0.75rem;
+		background: color-mix(in srgb, var(--danger, #c43d3d) 8%, var(--bg-hover));
+		border: 1px solid color-mix(in srgb, var(--danger, #c43d3d) 30%, transparent);
+		border-left: 3px solid var(--danger, #c43d3d);
+		border-radius: 8px;
+		font-size: 0.8rem;
+	}
+	.stream-error-text { flex: 1; min-width: 0; line-height: 1.45; color: var(--text-primary); }
+	.stream-error-text strong { color: var(--text-heading); margin-right: 0.4rem; }
+	.stream-error-detail { color: var(--text-secondary); word-break: break-word; }
+	.stream-error-retry {
+		flex-shrink: 0;
+		padding: 0.3rem 0.7rem;
+		background: var(--bg-card); color: var(--text-primary);
+		border: 1px solid var(--border); border-radius: 6px;
+		font-family: var(--font-sans); font-size: 0.78rem; font-weight: 600;
+		cursor: pointer; transition: all 0.12s;
+	}
+	.stream-error-retry:hover { background: var(--bg-hover); border-color: var(--text-secondary); }
+	.stream-error-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 	.thinking-indicator { padding: 0.25rem 0; }
 	.thinking-dots { display: flex; gap: 4px; }
