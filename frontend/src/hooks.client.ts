@@ -9,12 +9,19 @@
 
 import type { HandleClientError } from '@sveltejs/kit';
 
+// Variable-indirected dynamic import so Vite's import analyzer can't see
+// the literal specifier and try to resolve it eagerly. The module is
+// optional — guarded by the PUBLIC_SENTRY_DSN check below — so it's fine
+// if it's not installed.
+// eslint-disable-next-line @typescript-eslint/no-implied-eval
+const importSentry = () => (new Function('return import("@sentry/sveltekit")')() as Promise<any>);
+
 const dsn = import.meta.env.PUBLIC_SENTRY_DSN as string | undefined;
 let sentryReady = false;
 
 if (dsn) {
 	// Dynamic import so the bundle stays lean for users who don't ship Sentry.
-	import(/* @vite-ignore */ '@sentry/sveltekit')
+	importSentry()
 		.then((Sentry) => {
 			Sentry.init({
 				dsn,
@@ -35,7 +42,7 @@ export const handleError: HandleClientError = ({ error, event }) => {
 	console.error('[client error]', error, event);
 	if (sentryReady) {
 		// Lazy import again to avoid pulling Sentry into the path when DSN isn't set.
-		import(/* @vite-ignore */ '@sentry/sveltekit')
+		importSentry()
 			.then((Sentry) => Sentry.captureException(error))
 			.catch(() => {});
 	}
