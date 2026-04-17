@@ -25,6 +25,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api import config
+from src.api.static_cache import StaticAssetCacheMiddleware
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -82,6 +83,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-Session-UUID", "Authorization"],
 )
+
+# Cache-Control headers for static assets (long TTL for hashed bundles,
+# short TTL for per-session thumbnails, no-store for API JSON).
+app.add_middleware(StaticAssetCacheMiddleware)
 
 # Standardized error responses
 @app.exception_handler(HTTPException)
