@@ -32,7 +32,7 @@ from src.api.observability import init_sentry
 init_sentry()
 
 from src.api import config
-from src.api.security_headers import SecurityHeadersMiddleware
+from src.api.csrf import CSRFOriginMiddleware
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -95,9 +95,10 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-Session-UUID", "Authorization"],
 )
 
-# Security headers: MIME sniffing / clickjacking / referrer / permissions always
-# on, CSP opt-in via CSP_ENABLE=true.
-app.add_middleware(SecurityHeadersMiddleware)
+# CSRF: reject cross-origin state-changing requests that carry the auth cookie.
+# Unauthenticated requests (login, register) pass through; disable entirely
+# via CSRF_DISABLE=true (tests only).
+app.add_middleware(CSRFOriginMiddleware)
 
 # Standardized error responses
 @app.exception_handler(HTTPException)
