@@ -4,12 +4,13 @@ Auth Router — registration, login, logout, check
 Uses FastAPI-Users for user management with a custom username-based login.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from fastapi_users.db import SQLAlchemyUserDatabase
 
+from src.api.rate_limit import LOGIN_LIMIT, limiter
 from src.api.users import (
     fastapi_users, auth_backend, UserRead, UserCreate, UserManager,
     current_active_user, get_jwt_strategy,
@@ -18,7 +19,7 @@ from src.api.db import User, get_async_session
 
 router = APIRouter()
 
-# ── Registration (FastAPI-Users built-in) ──
+# ── Registration (FastAPI-Users built-in; rate-limited via PathRateLimitMiddleware) ──
 router.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
@@ -40,7 +41,9 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/auth/login")
+@limiter.limit(LOGIN_LIMIT)
 async def login_by_username(
+    request: Request,
     body: LoginRequest,
     response: Response,
     session=Depends(get_async_session),
