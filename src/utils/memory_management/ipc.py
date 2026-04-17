@@ -3,13 +3,20 @@ IPC (Inter-Process Communication) for Memory-Efficient Data Transfer.
 
 This module provides utilities for transferring data between processes
 without excessive memory duplication or serialization overhead.
+
+Security note: no pickle. Data is routed through ``IPCSerializer`` which
+accepts only numpy arrays, torch tensors, JSON primitives, and nested
+lists/dicts of those. Unsupported types raise ``TypeError`` rather than
+falling through to pickle, since loading attacker-controlled pickle is RCE.
+Any temp files produced by older builds with ``data_type: "pickle"`` are
+rejected on load.
 """
 
+import base64
 import os
 import io
 import time
 import json
-import pickle
 import tempfile
 import mmap
 import numpy as np
@@ -79,47 +86,30 @@ class SharedMemoryManager:
     
     def write_data(self, data: Any) -> str:
         """
-        Write any data to shared memory.
-        
-        Args:
-            data: Data to write
-            
-        Returns:
-            Identifier for the data in shared memory
+        Write data to a temp file, using typed JSON serialization.
+
+        The payload is routed through ``IPCSerializer`` so only explicitly
+        supported types (ndarray, Tensor, lists/dicts/JSON primitives) are
+        accepted. Unsupported types raise — never pickled.
         """
         try:
-            # Create a temporary file
-            fd, path = tempfile.mkstemp(suffix='.pkl')
+            prepared = IPCSerializer.prepare_data(data)
+            fd, path = tempfile.mkstemp(suffix='.json')
             os.close(fd)
-            
-            # Save the data to the file
-            with open(path, 'wb') as f:
-                pickle.dump(data, f)
-            
-            # Track the file
+            with open(path, 'w') as f:
+                json.dump(prepared, f)
             self.temp_files.append(path)
-            
             return path
         except Exception as e:
             logger.error(f"Error writing data to shared memory: {e}")
             raise
-    
+
     def read_data(self, identifier: str) -> Any:
-        """
-        Read data from shared memory.
-        
-        Args:
-            identifier: Identifier for the data in shared memory
-            
-        Returns:
-            The data
-        """
+        """Load data previously written by ``write_data``."""
         try:
-            # Load the data from the file
-            with open(identifier, 'rb') as f:
-                data = pickle.load(f)
-            
-            return data
+            with open(identifier, 'r') as f:
+                prepared = json.load(f)
+            return IPCSerializer.restore_data(prepared)
         except Exception as e:
             logger.error(f"Error reading data from shared memory: {e}")
             raise
@@ -248,21 +238,19 @@ class IPCSerializer:
         Returns:
             Dictionary with serialized array information
         """
-        # Save to a bytes buffer
+        # Save to a bytes buffer then base64-encode so the result is
+        # JSON-serializable (callers route through json.dump).
         buffer = io.BytesIO()
-        np.save(buffer, array)
+        np.save(buffer, array, allow_pickle=False)
         buffer.seek(0)
-        
-        # Create metadata
-        metadata = {
+
+        return {
             'type': 'numpy.ndarray',
             'dtype': str(array.dtype),
-            'shape': array.shape,
-            'size': array.size,
-            'bytes': buffer.read()
+            'shape': list(array.shape),
+            'size': int(array.size),
+            'bytes_b64': base64.b64encode(buffer.read()).decode('ascii'),
         }
-        
-        return metadata
     
     @staticmethod
     def restore_numpy_array(metadata: Dict[str, Any]) -> np.ndarray:
@@ -275,12 +263,15 @@ class IPCSerializer:
         Returns:
             The restored numpy array
         """
-        # Create a buffer with the bytes
-        buffer = io.BytesIO(metadata['bytes'])
+        # Legacy entries stored raw bytes under 'bytes'; current entries
+        # use base64 under 'bytes_b64'. Support both on read.
+        if 'bytes_b64' in metadata:
+            raw = base64.b64decode(metadata['bytes_b64'])
+        else:
+            raw = metadata['bytes']
+        buffer = io.BytesIO(raw)
         buffer.seek(0)
-        
-        # Load the array
-        return np.load(buffer)
+        return np.load(buffer, allow_pickle=False)
     
     @staticmethod
     def prepare_torch_tensor(tensor) -> Dict[str, Any]:
@@ -385,21 +376,16 @@ class IPCSerializer:
                 'content': {k: IPCSerializer.prepare_data(v) for k, v in data.items()}
             }
         
-        # Handle other types with pickle
+        # Reject types we can't serialize safely.
+        # Pickle is never used — loading attacker-controlled pickle is RCE.
         else:
-            try:
-                # Use pickle for complex types
-                serialized = pickle.dumps(data)
-                return {
-                    'data_type': 'pickle',
-                    'content': list(serialized)  # Convert bytes to list for JSON serialization
-                }
-            except Exception as e:
-                logger.error(f"Error serializing {type(data)}: {e}")
-                return {
-                    'data_type': 'error',
-                    'content': f"Could not serialize {type(data)}: {str(e)}"
-                }
+            msg = (
+                f"IPCSerializer cannot safely serialize {type(data).__name__}; "
+                "only numpy arrays, torch tensors, JSON primitives, and lists/dicts "
+                "of those are supported."
+            )
+            logger.error(msg)
+            raise TypeError(msg)
     
     @staticmethod
     def restore_data(data_info: Dict[str, Any]) -> Any:
@@ -431,7 +417,11 @@ class IPCSerializer:
             elif data_type == 'dict':
                 return {k: IPCSerializer.restore_data(v) for k, v in content.items()}
             elif data_type == 'pickle':
-                return pickle.loads(bytes(content))
+                # Legacy entries from older builds. Never restore.
+                raise RuntimeError(
+                    "Refusing to deserialize IPC payload with legacy 'pickle' "
+                    "data_type. Recreate the payload with the current build."
+                )
             elif data_type == 'error':
                 raise ValueError(f"Received error during serialization: {content}")
             else:
@@ -491,8 +481,8 @@ def from_shared_memory(identifier: str) -> Any:
     # Check file extension to determine how to load
     if identifier.endswith('.npy'):
         return manager.read_array(identifier)
-    
-    # Otherwise assume pickle
+
+    # Otherwise: safe typed JSON (see SharedMemoryManager.write_data).
     return manager.read_data(identifier)
 
 def cleanup_shared_memory():

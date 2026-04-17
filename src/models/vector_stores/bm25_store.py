@@ -5,8 +5,9 @@ Provides BM25 keyword-based retrieval without vector embeddings.
 Stores tokenized text per session, persisted to disk.
 """
 
+import json
 import os
-import pickle
+import shutil
 import threading
 from typing import List, Dict, Any, Optional, Tuple
 
@@ -16,6 +17,13 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 BM25_DATA_PATH = os.path.join(os.getcwd(), ".bm25")
+
+# Sidecar holds per-document texts/ids/metadatas alongside the bm25s native
+# index files. The index itself is persisted via ``bm25s.BM25.save`` which
+# writes safe numpy + JSON blobs (no pickle).
+_SIDECAR_NAME = "sidecar.json"
+_INDEX_SUBDIR = "index"
+_LEGACY_PICKLE = "index.pkl"
 
 
 class BM25Store(BaseVectorStore):
@@ -34,29 +42,66 @@ class BM25Store(BaseVectorStore):
         return os.path.join(self._store_dir, session_id)
 
     def _load_index(self, session_id: str):
-        """Load a persisted BM25 index for a session."""
+        """Load a persisted BM25 index for a session.
+
+        Uses bm25s' native safe serialization (numpy + JSON, ``allow_pickle=False``)
+        plus a JSON sidecar for texts/ids/metadatas. Legacy ``index.pkl`` files
+        from older builds are discarded on load — the index is regenerable.
+        """
         if session_id in self._indices:
             return self._indices[session_id]
 
-        index_path = os.path.join(self._session_dir(session_id), "index.pkl")
-        if os.path.exists(index_path):
+        session_dir = self._session_dir(session_id)
+        legacy = os.path.join(session_dir, _LEGACY_PICKLE)
+        if os.path.exists(legacy):
             try:
-                with open(index_path, 'rb') as f:
-                    data = pickle.load(f)
-                self._indices[session_id] = data
-                logger.info(f"Loaded BM25 index for session {session_id}: {len(data['ids'])} documents")
-                return data
-            except Exception as e:
-                logger.error(f"Error loading BM25 index: {e}")
-        return None
+                os.remove(legacy)
+                logger.info(f"Removed legacy BM25 pickle for session {session_id}; will rebuild on next indexing")
+            except OSError:
+                pass
+            return None
+
+        index_dir = os.path.join(session_dir, _INDEX_SUBDIR)
+        sidecar_path = os.path.join(session_dir, _SIDECAR_NAME)
+        if not (os.path.isdir(index_dir) and os.path.exists(sidecar_path)):
+            return None
+
+        try:
+            import bm25s
+            retriever = bm25s.BM25.load(index_dir, allow_pickle=False)
+            with open(sidecar_path) as f:
+                sidecar = json.load(f)
+            data = {
+                'retriever': retriever,
+                'texts': sidecar['texts'],
+                'ids': sidecar['ids'],
+                'metadatas': sidecar['metadatas'],
+            }
+            self._indices[session_id] = data
+            logger.info(f"Loaded BM25 index for session {session_id}: {len(data['ids'])} documents")
+            return data
+        except Exception as e:
+            logger.error(f"Error loading BM25 index: {e}")
+            return None
 
     def _save_index(self, session_id: str, data: dict):
-        """Persist BM25 index to disk."""
+        """Persist BM25 index to disk (safe format: numpy + JSON)."""
         session_dir = self._session_dir(session_id)
         os.makedirs(session_dir, exist_ok=True)
-        index_path = os.path.join(session_dir, "index.pkl")
-        with open(index_path, 'wb') as f:
-            pickle.dump(data, f)
+        index_dir = os.path.join(session_dir, _INDEX_SUBDIR)
+        # bm25s.save writes into a directory; clear stale contents first.
+        if os.path.isdir(index_dir):
+            shutil.rmtree(index_dir)
+        os.makedirs(index_dir, exist_ok=True)
+
+        data['retriever'].save(index_dir, allow_pickle=False)
+        sidecar = {
+            'texts': data['texts'],
+            'ids': data['ids'],
+            'metadatas': data['metadatas'],
+        }
+        with open(os.path.join(session_dir, _SIDECAR_NAME), 'w') as f:
+            json.dump(sidecar, f)
         logger.info(f"Saved BM25 index for session {session_id}")
 
     def add_documents(
