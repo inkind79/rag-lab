@@ -25,6 +25,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api import config
+from src.api.security_headers import SecurityHeadersMiddleware
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -82,6 +83,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-Session-UUID", "Authorization"],
 )
+
+# Security headers: MIME sniffing / clickjacking / referrer / permissions always
+# on, CSP opt-in via CSP_ENABLE=true.
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Standardized error responses
 @app.exception_handler(HTTPException)
